@@ -6,8 +6,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=PASSWORD_PLACEHOLDER
-      - MYSQL_PASSWORD=PASSWORD_PLACEHOLDER
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
     networks:
@@ -19,11 +19,11 @@ services:
     volumes:
       - nextcloud_data:/var/www/html
     environment:
-      - MYSQL_PASSWORD=PASSWORD_PLACEHOLDER
+      - MYSQL_PASSWORD=${DB_PASSWORD}
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
       - MYSQL_HOST=db
-      - NEXTCLOUD_TRUSTED_DOMAINS=cloud.DOMAIN_PLACEHOLDER
+      - NEXTCLOUD_TRUSTED_DOMAINS=cloud.${DOMAIN_NAME}
     networks:
       - pfadfinder_net
     depends_on:
@@ -31,7 +31,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Die Nextcloud ist unter `cloud.eure-domain.de` erreichbar
-      - "traefik.http.routers.nextcloud.rule=Host(`cloud.DOMAIN_PLACEHOLDER`)"
+      - "traefik.http.routers.nextcloud.rule=Host(`cloud.${DOMAIN_NAME}`)"
       - "traefik.http.routers.nextcloud.entrypoints=websecure"
       - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
       - "traefik.http.services.nextcloud.loadbalancer.server.port=80"

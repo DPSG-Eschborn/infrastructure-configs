@@ -10,7 +10,7 @@ services:
     labels:
       - "traefik.enable=true"
       # Die Website wird sauber auf www.eure-domain.de geroutet
-      - "traefik.http.routers.website.rule=Host(`www.DOMAIN_PLACEHOLDER`)"
+      - "traefik.http.routers.website.rule=Host(`www.${DOMAIN_NAME}`)"
       - "traefik.http.routers.website.entrypoints=websecure"
       - "traefik.http.routers.website.tls.certresolver=myresolver"
       - "traefik.http.services.website.loadbalancer.server.port=80"

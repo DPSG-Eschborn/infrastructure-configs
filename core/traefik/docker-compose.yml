@@ -14,7 +14,7 @@ services:
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       # Let's Encrypt SSL-Zertifikate Konfiguration
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
-      - "--certificatesresolvers.myresolver.acme.email=it-admin@DOMAIN_PLACEHOLDER"
+      - "--certificatesresolvers.myresolver.acme.email=it-admin@${DOMAIN_NAME}"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
