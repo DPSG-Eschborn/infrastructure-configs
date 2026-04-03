@@ -8,6 +8,7 @@ packages:
   - ca-certificates
   - gnupg
   - openssl
+  - fail2ban
 
 # Blockieren von Root Password-Login gemäß P10 Security
 ssh_pwauth: false
@@ -21,9 +22,13 @@ users:
       - gh:pfadfinder-admin # <-- GitHub Username hier anpassen, um automatischen SSH-Key zu ziehen
 
 runcmd:
+  # SSH auf Port 2222 verschieben für mehr Schutz (Security by Obscurity)
+  - sed -i 's/#*Port 22/Port 2222/g' /etc/ssh/sshd_config
+  - systemctl restart ssh
+
   # UFW Firewall strikt aktivieren (P10 Security)
   - ufw --force enable
-  - ufw allow ssh
+  - ufw allow 2222/tcp
   - ufw allow http
   - ufw allow https
   
@@ -35,3 +40,6 @@ runcmd:
   # Setup im lautlosen Headless-Modus ausführen. 
   # Parameter können hier direkt angepasst werden (z.B. --install=core,nextcloud)
   - ./setup.sh --headless --install=traefik --domain=cloud.unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
+  
+  # Finaler Reboot für sauberes Laden aller neuer Berechtigungen (Docker Groups etc.)
+  - reboot

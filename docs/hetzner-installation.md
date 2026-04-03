@@ -28,7 +28,7 @@ Ein manueller SSH-Login ist für das initiale Setup nicht erforderlich. Der Clou
 
 Um eine hohe Systemstabilität und Sicherheit zu gewährleisten, beinhaltet die `cloud-init.yaml` folgende Restriktionen:
 
-1. **SSH Hardening:** Der Root-Login per Passwort wird grundsätzlich blockiert. Der Zugriff ist ausschließlich über kryptografische SSH-Keys (z.B. Ed25519) gestattet.
-2. **UFW (Uncomplicated Firewall):** Eine restriktive Firewall ("Default Deny") wird aktiviert. Standardmäßig sind nur die Ports 80 (HTTP), 443 (HTTPS) und 22 (SSH) freigegeben. Einzelne Container werden dahinter gekapselt.
+1. **SSH Hardening:** Der Root-Login per Passwort wird grundsätzlich blockiert. Der Zugriff ist ausschließlich über kryptografische SSH-Keys gestattet. **Zusätzlich wird der SSH-Port von 22 auf 2222 verschoben** ("Security by Obscurity"). Logins erfolgen also mit `ssh -p 2222 user@domain`.
+2. **UFW & Fail2Ban:** Eine restriktive Firewall ("Default Deny") wird aktiviert. Nur die Ports 80 (HTTP), 443 (HTTPS) und 2222 (SSH) sind freigegeben. Fail2Ban blockiert automatisch IP-Adressen von Angreifern bei Login-Versuchen.
 3. **Unattended Upgrades:** Der Server ist so konfiguriert, dass er automatisch tägliche Security-Patches des Betriebssystems installiert.
 4. **Logging:** Die Ausgabe des Skripts `setup.sh` wird in `/var/log/pfadfinder-setup.log` persistiert, um Fehleranalysen im Nachhinein zu ermöglichen.
