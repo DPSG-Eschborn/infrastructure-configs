@@ -90,9 +90,16 @@ if [ "$MODE" = "interactive" ]; then
     done
 fi
 
-if [ -z "$DOMAIN" ]; then
-    echo "[!] FEHLER: Keine Domain angegeben. Wir können SSL-Zertifikate sonst nicht routen."
-    exit 1
+if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "AUTO" ]; then
+    echo "[-] Kein Domainname übergeben (oder AUTO gesetzt). Erstelle automatische .nip.io Test-Domain..."
+    PUBLIC_IP=$(curl -4 -s icanhazip.com)
+    if [ -n "$PUBLIC_IP" ]; then
+        DOMAIN="${PUBLIC_IP}.nip.io"
+        echo "    -> Dynamische Domain generiert: $DOMAIN"
+    else
+        echo "[!] FEHLER: Konnte Server IP nicht ermitteln. Abbruch."
+        exit 1
+    fi
 fi
 
 # 4. Konstantes Deployment Network erstellen
