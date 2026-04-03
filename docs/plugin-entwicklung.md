@@ -55,14 +55,16 @@ infrastructure-configs/
 ├── cloud-configs/                 # Vorlagen für Cloud-Provider
 │   └── hetzner-basic-node.yaml    # Cloud-Init Template
 ├── core/                          # Fundamentale Dienste
-│   └── traefik/                   
+│   └── traefik/                   # Leichter Reverse-Proxy (SSL)
 │       ├── docker-compose.yml
-│       ├── .env.example
 │       └── manifest.env
 └── extensions/                    # Optionale Module
-    └── nextcloud/
+    ├── nextcloud/
+    │   ├── docker-compose.yml
+    │   ├── .env.example
+    │   └── manifest.env
+    └── website/
         ├── docker-compose.yml
-        ├── .env.example
         └── manifest.env
 ```
 

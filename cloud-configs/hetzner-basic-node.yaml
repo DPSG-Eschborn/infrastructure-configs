@@ -29,8 +29,8 @@ runcmd:
   # UFW Firewall strikt aktivieren (P10 Security)
   - ufw --force enable
   - ufw allow 2222/tcp
-  - ufw allow http
-  - ufw allow https
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
   
   # Das Pfadfinder-Repo clonen (Atomic Bootstrapping)
   - git clone https://github.com/DPSG-Eschborn/infrastructure-configs.git /opt/pfadfinder-cloud
@@ -38,8 +38,8 @@ runcmd:
   - chmod +x setup.sh
   
   # Setup im lautlosen Headless-Modus ausführen. 
-  # Parameter können hier direkt angepasst werden (z.B. --install=core,nextcloud)
-  - ./setup.sh --headless --install=traefik --domain=cloud.unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
+  # Parameter können hier direkt angepasst werden (z.B. --install=nextcloud,website)
+  - ./setup.sh --headless --install=core,nextcloud,website --domain=unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
   
   # Finaler Reboot für sauberes Laden aller neuer Berechtigungen (Docker Groups etc.)
   - reboot

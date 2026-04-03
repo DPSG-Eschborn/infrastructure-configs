@@ -1,0 +1,20 @@
+services:
+  website:
+    image: nginx:alpine
+    container_name: pfadfinder-website
+    restart: unless-stopped
+    networks:
+      - pfadfinder_net
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      # Die Website wird sauber auf www.eure-domain.de geroutet
+      - "traefik.http.routers.website.rule=Host(`www.DOMAIN_PLACEHOLDER`)"
+      - "traefik.http.routers.website.entrypoints=websecure"
+      - "traefik.http.routers.website.tls.certresolver=myresolver"
+      - "traefik.http.services.website.loadbalancer.server.port=80"
+
+networks:
+  pfadfinder_net:
+    external: true
