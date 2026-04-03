@@ -1,0 +1,21 @@
+#cloud-config
+users:
+  - name: admin
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 X+Wun/1P3XPkhs485DeU3QkP6QsqsOGVOEtkT4JHMPA famil@LAPTOP-9C22S30H
+
+packages:
+  - fail2ban
+  - ufw
+package_update: true
+package_upgrade: true
+
+
+runcmd:
+
+- ufw allow 2222
+- ufw enable
+- reboot
