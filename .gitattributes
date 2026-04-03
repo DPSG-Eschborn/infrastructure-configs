@@ -1,0 +1,4 @@
+* text=auto
+
+# Bash Skripte müssen ZWINGEND Linux-Zeilenumbrüche (LF) haben, sonst crasht Ubuntu!
+*.sh text eol=lf
