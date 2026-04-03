@@ -1,2 +1,2 @@
 #include
-https://URLtoCode/config.yaml
+https://github.com/DPSG-Eschborn/infrastructure-configs/hetznerconfig.yaml

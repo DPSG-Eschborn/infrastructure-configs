@@ -1,11 +1,11 @@
 #cloud-config
 users:
-  - name: holu
+  - name: admin
     groups: users, admin
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     ssh_authorized_keys:
-      - <public_ssh_key>
+      - ssh-ed25519 X+Wun/1P3XPkhs485DeU3QkP6QsqsOGVOEtkT4JHMPA famil@LAPTOP-9C22S30H
 
 packages:
   - fail2ban
