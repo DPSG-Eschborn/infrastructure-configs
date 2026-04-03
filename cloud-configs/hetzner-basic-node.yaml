@@ -34,12 +34,11 @@ runcmd:
   
   # Das Pfadfinder-Repo clonen (Atomic Bootstrapping)
   - git clone https://github.com/DPSG-Eschborn/infrastructure-configs.git /opt/pfadfinder-cloud
-  - cd /opt/pfadfinder-cloud
-  - chmod +x setup.sh
   
   # Setup im lautlosen Headless-Modus ausführen. 
-  # Parameter können hier direkt angepasst werden (z.B. --install=nextcloud,website)
-  - ./setup.sh --headless --install=core,nextcloud,website --domain=unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
+  # WICHTIG: In Cloud-Init müssen cd und Ausführung in einem Rutsch via && geschrieben werden!
+  # Parameter können hier direkt angepasst werden (z.B. --domain=eure-domain.de)
+  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh --headless --install=core,nextcloud,website --domain=unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
   
   # Finaler Reboot für sauberes Laden aller neuer Berechtigungen (Docker Groups etc.)
   - reboot
