@@ -1,0 +1,21 @@
+#cloud-config
+users:
+  - name: holu
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - <public_ssh_key>
+
+packages:
+  - fail2ban
+  - ufw
+package_update: true
+package_upgrade: true
+
+
+runcmd:
+
+- ufw allow 2222
+- ufw enable
+- reboot
