@@ -341,7 +341,14 @@ function Get-DeploymentConfig {
             $sbPass = Read-SecureInput "  Storage Box Passwort"
 
             if (-not [string]::IsNullOrWhiteSpace($sbPass)) {
-                $modules += "storagebox"
+                # StorageBox wird VOR Nextcloud eingefuegt (Mount muss vor Container-Start existieren)
+                # Position: nach "core", vor "nextcloud"
+                $idx = $modules.IndexOf("nextcloud")
+                if ($idx -ge 0) {
+                    $modules = $modules[0..$($idx-1)] + @("storagebox") + $modules[$idx..($modules.Count-1)]
+                } else {
+                    $modules += "storagebox"
+                }
                 $storageBox = @{ User = $sbUser; Pass = $sbPass }
                 Write-Success "Storage Box konfiguriert."
             } else {
@@ -427,6 +434,12 @@ function Build-CloudInitYaml {
 
     $yaml = @"
 #cloud-config
+# Pfadfinder-Cloud: Automatisch generiert von deploy.ps1
+# Server-Haertung gemaess KDG/DSGVO Anforderungen
+
+# SSH Root-Login deaktivieren (nur Key-Auth fuer pfadiadmin)
+ssh_pwauth: false
+
 users:$sshBlock
 
 package_update: true
@@ -435,10 +448,33 @@ packages:
   - git
   - curl
   - openssl
+  - fail2ban
+  - unattended-upgrades
+  - ufw
 
 runcmd:
+  # SSH-Haertung: Root-Login verbieten, Max. 3 Versuche
+  - sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  - sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
+  - systemctl restart ssh
+
+  # UFW Firewall: deny-all + Whitelist
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+
+  # Automatische Sicherheitsupdates aktivieren
+  - echo 'APT::Periodic::Update-Package-Lists "1";' > /etc/apt/apt.conf.d/20auto-upgrades
+  - echo 'APT::Periodic::Unattended-Upgrade "1";' >> /etc/apt/apt.conf.d/20auto-upgrades
+
+  # Pfadfinder-Cloud Setup
   - git clone $($Script:REPO_URL) /opt/pfadfinder-cloud || { echo 'FATAL: git clone fehlgeschlagen' >> /var/log/pfadfinder-setup.log; exit 1; }
   - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh $setupArgs > /var/log/pfadfinder-setup.log 2>&1
+
+  # Docker-Gruppe dem Admin-User zuweisen
   - usermod -aG docker pfadiadmin
 "@
     return $yaml

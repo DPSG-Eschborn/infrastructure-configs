@@ -24,7 +24,27 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
+    labels:
+      # ===== Globale Security-Headers Middleware (KDG/DSGVO-konform) =====
+      # Referenz: https://securityheaders.com / OWASP Secure Headers Project
+      # Wird von allen Services via "security-headers@docker" referenziert.
+      #
+      # HSTS: Browser duerfen nur ueber HTTPS verbinden (1 Jahr Cache)
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.security-headers.headers.stsPreload=true"
+      # Clickjacking-Schutz: Seite darf nicht in Frames eingebettet werden
+      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
+      # MIME-Sniffing verhindern (XSS-Vektor)
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      # XSS-Filter des Browsers aktivieren
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      # Referrer-Policy: Nur Origin senden, keine vollen URLs
+      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      # Permissions-Policy: Kamera, Mikrofon, Geolocation standardmaessig deaktiviert
+      - "traefik.http.middlewares.security-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()"
 
 networks:
   pfadfinder_net:
     external: true
+

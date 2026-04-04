@@ -9,6 +9,8 @@ packages:
   - gnupg
   - openssl
   - fail2ban
+  - unattended-upgrades
+  - ufw
 
 # Blockieren von Root Password-Login gemäß P10 Security
 ssh_pwauth: false
@@ -22,18 +24,26 @@ users:
       - gh:pfadfinder-admin # <-- GitHub Username hier anpassen, um automatischen SSH-Key zu ziehen
 
 runcmd:
-  # SSH auf Port 2222 verschieben für mehr Schutz (Security by Obscurity)
+  # SSH-Haertung: Port 2222, Root-Login verbieten, Max. 3 Versuche
   - sed -i 's/#*Port 22/Port 2222/g' /etc/ssh/sshd_config
+  - sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  - sed -i 's/^#*MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config
   - systemctl restart ssh
 
-  # UFW Firewall strikt aktivieren (P10 Security)
-  - ufw --force enable
+  # UFW Firewall strikt aktivieren
+  - ufw default deny incoming
+  - ufw default allow outgoing
   - ufw allow 2222/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
-  
-  # Das Pfadfinder-Repo clonen (Atomic Bootstrapping)
-  - git clone https://github.com/DPSG-Eschborn/infrastructure-configs.git /opt/pfadfinder-cloud
+  - ufw --force enable
+
+  # Automatische Sicherheitsupdates aktivieren
+  - echo 'APT::Periodic::Update-Package-Lists "1";' > /etc/apt/apt.conf.d/20auto-upgrades
+  - echo 'APT::Periodic::Unattended-Upgrade "1";' >> /etc/apt/apt.conf.d/20auto-upgrades
+
+  # Das Pfadfinder-Repo clonen (mit Fehlerbehandlung)
+  - git clone https://github.com/DPSG-Eschborn/infrastructure-configs.git /opt/pfadfinder-cloud || { echo 'FATAL: git clone failed' >> /var/log/pfadfinder-setup.log; exit 1; }
   
   # Setup im lautlosen Headless-Modus ausführen. 
   # WICHTIG: In Cloud-Init müssen cd und Ausführung in einem Rutsch via && geschrieben werden!

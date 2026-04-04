@@ -35,6 +35,7 @@ services:
       - "traefik.http.routers.nextcloud.rule=Host(`cloud.${DOMAIN_NAME}`)"
       - "traefik.http.routers.nextcloud.entrypoints=websecure"
       - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
+      - "traefik.http.routers.nextcloud.middlewares=security-headers@docker"
       - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
 
 volumes:

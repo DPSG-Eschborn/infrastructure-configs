@@ -55,6 +55,60 @@ else
     echo "[OK] Docker ist bereits installiert. (Idempotenz Check bestanden)"
 fi
 
+# 1b. Server-Haertung (Idempotent)
+echo ""
+echo "[-] Pruefe Sicherheitskonfiguration..."
+
+# fail2ban: Schuetzt SSH vor Brute-Force-Angriffen
+if ! command -v fail2ban-client &> /dev/null; then
+    echo "[+] Installiere fail2ban (SSH Brute-Force-Schutz)..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -yqq fail2ban >/dev/null
+    systemctl enable fail2ban >/dev/null 2>&1
+    systemctl start fail2ban >/dev/null 2>&1
+    echo "    -> fail2ban installiert und aktiviert."
+else
+    echo "[OK] fail2ban bereits installiert."
+fi
+
+# unattended-upgrades: Automatische Sicherheitspatches
+# (Kritisch fuer Pfadi-Szenarien wo niemand den Server aktiv administriert)
+if ! dpkg -s unattended-upgrades &>/dev/null; then
+    echo "[+] Installiere automatische Sicherheitsupdates..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -yqq unattended-upgrades >/dev/null
+    # Aktiviere automatische Updates (noninteractive)
+    echo 'APT::Periodic::Update-Package-Lists "1";' > /etc/apt/apt.conf.d/20auto-upgrades
+    echo 'APT::Periodic::Unattended-Upgrade "1";' >> /etc/apt/apt.conf.d/20auto-upgrades
+    echo "    -> Automatische Sicherheitsupdates aktiviert."
+else
+    echo "[OK] Automatische Sicherheitsupdates bereits konfiguriert."
+fi
+
+# UFW Firewall: deny-all + Whitelist (nur wenn noch nicht aktiv)
+if command -v ufw &> /dev/null; then
+    if ! ufw status | grep -q "Status: active"; then
+        echo "[+] Aktiviere UFW Firewall..."
+        ufw default deny incoming >/dev/null 2>&1
+        ufw default allow outgoing >/dev/null 2>&1
+        ufw allow 22/tcp >/dev/null 2>&1     # SSH
+        ufw allow 80/tcp >/dev/null 2>&1     # HTTP
+        ufw allow 443/tcp >/dev/null 2>&1    # HTTPS
+        ufw --force enable >/dev/null 2>&1
+        echo "    -> Firewall aktiv: Nur SSH (22), HTTP (80), HTTPS (443) erlaubt."
+    else
+        echo "[OK] UFW Firewall bereits aktiv."
+    fi
+else
+    echo "[+] Installiere UFW Firewall..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -yqq ufw >/dev/null
+    ufw default deny incoming >/dev/null 2>&1
+    ufw default allow outgoing >/dev/null 2>&1
+    ufw allow 22/tcp >/dev/null 2>&1
+    ufw allow 80/tcp >/dev/null 2>&1
+    ufw allow 443/tcp >/dev/null 2>&1
+    ufw --force enable >/dev/null 2>&1
+    echo "    -> UFW installiert und aktiviert."
+fi
+
 # 2. Plugin-System initialisieren (Auto-Erkennung)
 declare -A PLUGINS_NAME
 declare -A PLUGINS_DESC
@@ -99,36 +153,54 @@ if [ "$MODE" = "interactive" ]; then
         esac
     done
     
-    # Storage Box Konfigurationsdialog (nur wenn storagebox-Modul ausgewaehlt)
+    # Storage Box Konfigurationsdialog (nur wenn storagebox UND nextcloud ausgewaehlt)
+    local has_nextcloud=false
+    local has_storagebox=false
     for selected_mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
-        if [ "$selected_mod" = "storagebox" ]; then
-            echo ""
-            echo "============================================"
-            echo "   Hetzner Storage Box Konfiguration"
-            echo "============================================"
-            echo ""
-            echo "WICHTIG: Stelle sicher, dass SMB-Support in der Hetzner Console"
-            echo "aktiviert ist, bevor du fortfaehrst!"
-            echo "(Hetzner Console -> Storage Box -> Einstellungen -> Samba aktivieren)"
-            echo ""
-            read -p "Dein Storage Box Username (z.B. u123456): " STORAGEBOX_USER
-            read -s -p "Dein Storage Box Passwort: " STORAGEBOX_PASS
-            echo ""  # Zeilenumbruch nach verdeckter Eingabe
-            
-            if [ -z "$STORAGEBOX_USER" ] || [ -z "$STORAGEBOX_PASS" ]; then
-                echo "[!] Kein Username oder Passwort eingegeben. Storage Box wird uebersprungen."
-                # Modul sauber aus der Liste entfernen (ohne leere Elemente)
-                local filtered=()
-                for m in "${INSTALL_MODULES[@]}"; do
-                    [[ "$m" != "storagebox" ]] && filtered+=("$m")
-                done
-                INSTALL_MODULES=("${filtered[@]}")
-            else
-                echo "[OK] Storage Box Zugangsdaten erfasst."
-            fi
-            break
-        fi
+        [ "$selected_mod" = "nextcloud" ] && has_nextcloud=true
+        [ "$selected_mod" = "storagebox" ] && has_storagebox=true
     done
+    
+    # StorageBox ohne Nextcloud ergibt keinen Sinn — User warnen
+    if [ "$has_storagebox" = true ] && [ "$has_nextcloud" = false ]; then
+        echo ""
+        echo "[!] WARNUNG: Storage Box ohne Nextcloud hat keinen Effekt."
+        echo "    Die Storage Box wird nur als Nextcloud-Datenspeicher genutzt."
+        echo "    Storage Box wird aus der Auswahl entfernt."
+        local filtered=()
+        for m in "${INSTALL_MODULES[@]}"; do
+            [[ "$m" != "storagebox" ]] && filtered+=("$m")
+        done
+        INSTALL_MODULES=("${filtered[@]}")
+        has_storagebox=false
+    fi
+    
+    if [ "$has_storagebox" = true ]; then
+        echo ""
+        echo "============================================"
+        echo "   Hetzner Storage Box Konfiguration"
+        echo "============================================"
+        echo ""
+        echo "WICHTIG: Stelle sicher, dass SMB-Support in der Hetzner Console"
+        echo "aktiviert ist, bevor du fortfaehrst!"
+        echo "(Hetzner Console -> Storage Box -> Einstellungen -> Samba aktivieren)"
+        echo ""
+        read -p "Dein Storage Box Username (z.B. u123456): " STORAGEBOX_USER
+        read -s -p "Dein Storage Box Passwort: " STORAGEBOX_PASS
+        echo ""  # Zeilenumbruch nach verdeckter Eingabe
+        
+        if [ -z "$STORAGEBOX_USER" ] || [ -z "$STORAGEBOX_PASS" ]; then
+            echo "[!] Kein Username oder Passwort eingegeben. Storage Box wird uebersprungen."
+            # Modul sauber aus der Liste entfernen (ohne leere Elemente)
+            local filtered=()
+            for m in "${INSTALL_MODULES[@]}"; do
+                [[ "$m" != "storagebox" ]] && filtered+=("$m")
+            done
+            INSTALL_MODULES=("${filtered[@]}")
+        else
+            echo "[OK] Storage Box Zugangsdaten erfasst."
+        fi
+    fi
 fi
 
 if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "AUTO" ]; then
@@ -166,7 +238,26 @@ else
     echo "    -> Netzwerk existiert bereits."
 fi
 
-# 5. Deployment durchlaufen
+# 5. Modul-Reihenfolge optimieren
+# Storagebox muss VOR Nextcloud laufen, damit der Mount-Punkt existiert
+# bevor Nextcloud den Data-Dir-Pfad braucht.
+ORDERED_MODULES=()
+for priority_mod in "core" "storagebox"; do
+    for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
+        [ "$mod" = "$priority_mod" ] && ORDERED_MODULES+=("$mod")
+    done
+done
+# Restliche Module (nextcloud, website, etc.) in Original-Reihenfolge
+for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
+    local already=false
+    for o in "${ORDERED_MODULES[@]+${ORDERED_MODULES[@]}}"; do
+        [ "$mod" = "$o" ] && already=true
+    done
+    [ "$already" = false ] && ORDERED_MODULES+=("$mod")
+done
+INSTALL_MODULES=("${ORDERED_MODULES[@]+${ORDERED_MODULES[@]}}")
+
+# 6. Deployment durchlaufen
 echo ""
 if [ ${#INSTALL_MODULES[@]} -eq 0 ]; then
     echo "Keine Module zum Installieren ausgewählt."
@@ -268,7 +359,13 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
                     echo 'NEXTCLOUD_DATA_DIR=/mnt/storagebox-data' >> "$NC_ENV"
                 fi
                 echo "    -> Nextcloud Data-Directory auf Storage Box umgestellt."
-                echo "    -> WICHTIG: Nextcloud-Container muss neu gestartet werden, falls er bereits laeuft."
+                # Auto-Restart falls Nextcloud bereits laeuft (bei Re-Runs)
+                if docker ps --format '{{.Names}}' 2>/dev/null | grep -q 'nextcloud'; then
+                    echo "    -> Nextcloud-Container wird neu gestartet..."
+                    cd ./extensions/nextcloud
+                    docker compose up -d 2>&1 | sed 's/^/       /'
+                    cd - > /dev/null
+                fi
             fi
         fi
     else
