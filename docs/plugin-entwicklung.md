@@ -35,10 +35,8 @@ Beispiel für eine `manifest.env`:
 
 ```bash
 MODULE_ID="nextcloud"
-MODULE_NAME="Nextcloud AIO"
-MODULE_DESCRIPTION="Basis-Instanz für Dateimanagement und Kalender."
-REQUIRES_DOMAIN=true
-REQUIRES_DB_PASSWORD=true
+MODULE_NAME="Nextcloud (Basic)"
+MODULE_DESCRIPTION="Die leichte, hochperformante Basic Variante der Nextcloud inkl. MariaDB Container."
 ```
 
 ## Verzeichnisstruktur
@@ -57,6 +55,7 @@ infrastructure-configs/
 ├── core/                          # Fundamentale Dienste
 │   └── traefik/                   # Leichter Reverse-Proxy (SSL)
 │       ├── docker-compose.yml
+│       ├── .env.example
 │       └── manifest.env
 └── extensions/                    # Optionale Module
     ├── nextcloud/
@@ -65,6 +64,9 @@ infrastructure-configs/
     │   └── manifest.env
     └── website/
         ├── docker-compose.yml
+        ├── .env.example
+        ├── html/                   # Statische Website-Dateien
+        │   └── index.html
         └── manifest.env
 ```
 

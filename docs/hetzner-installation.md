@@ -13,7 +13,7 @@ Ein manueller SSH-Login ist für das initiale Setup nicht erforderlich. Der Clou
 2. Die Vorlage bei der Servererstellung im Cloud-Panel im Feld "User Data" einfügen.
 3. **Wichtig:** Scrolle im Code etwas runter und passe zwei kleine Dinge an deine Gruppe an:
    - Ersetze `pfadfinder-admin` durch deinen eigenen GitHub-Namen (damit verknüpft Hetzner automatisch deinen SSH-Key).
-   - Ersetze ganz unten `cloud.unsere-domain.de` durch eure echte Pfadfinder-Domain.
+   - Ersetze ganz unten `unsere-domain.de` durch eure echte Pfadfinder-Domain (hinter `--domain=`).
 4. Der Server startet.
 5. Das System führt die Cloud-Init Anweisungen aus:
    - Systempakete aktualisieren (`apt-get update`).

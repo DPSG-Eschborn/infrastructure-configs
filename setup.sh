@@ -114,9 +114,13 @@ fi
 
 # 5. Deployment durchlaufen
 echo ""
-echo "Starte Deployment Prozess für: ${INSTALL_MODULES[*]:-Keine ausgewählt}"
+if [ ${#INSTALL_MODULES[@]} -eq 0 ]; then
+    echo "Keine Module zum Installieren ausgewählt."
+else
+    echo "Starte Deployment Prozess für: ${INSTALL_MODULES[*]}"
+fi
 
-for mod in "${INSTALL_MODULES[@]:-}"; do
+for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
     # Existiert das Modul in unseren ausgelesenen Plugins?
     if [[ -n "${PLUGINS_PATH[$mod]:-}" ]]; then
         MOD_PATH="${PLUGINS_PATH[$mod]}"
@@ -135,8 +139,11 @@ for mod in "${INSTALL_MODULES[@]:-}"; do
                 sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" "$TMP_ENV"
                 
                 # Wenn Passwörter gefordert werden, sichere zufällige Passwörter generieren
-                RANDOM_PW=$(openssl rand -hex 16)
-                sed -i "s/PASSWORD_PLACEHOLDER/$RANDOM_PW/g" "$TMP_ENV"
+                # Jedes Vorkommen von PASSWORD_PLACEHOLDER bekommt sein eigenes Passwort
+                while grep -q 'PASSWORD_PLACEHOLDER' "$TMP_ENV"; do
+                    RANDOM_PW=$(openssl rand -hex 16)
+                    sed -i "0,/PASSWORD_PLACEHOLDER/s/PASSWORD_PLACEHOLDER/$RANDOM_PW/" "$TMP_ENV"
+                done
                 
                 # Atomares Verschieben
                 mv "$TMP_ENV" "$ENV_FILE"

@@ -28,7 +28,7 @@ Wenn du für den Stamm einen neuen großen Cloud-Server mietest, geht es sogar n
 
 1. Gehe in den Ordner `cloud-configs` und öffne die Datei [`hetzner-basic-node.yaml`](./cloud-configs/hetzner-basic-node.yaml).
 2. Kopiere dir den gigantischen englischen Textblock einfach raus.
-3. Ändere unten im Text das `unsere-domain.de` auf unsere echte DPSG-Domain. (Und optional ganz oben den GitHub-Namen für deinen eigenen Fernzugriff).
+3. Ändere unten im Text das `unsere-domain.de` (hinter `--domain=`) auf eure echte DPSG-Domain. (Und optional ganz oben den GitHub-Namen für deinen eigenen Fernzugriff).
 4. Klicke bei Hetzner bei der Server-Erstellung auf den unscheinbaren Reiter "Cloud config" (oder "User Data") und füge den ganzen Text dort ein.
 5. Klicke auf Server kaufen. 
 

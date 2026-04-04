@@ -15,7 +15,7 @@ ssh_pwauth: false
 
 users:
   - name: pfadiadmin
-    groups: sudo, docker
+    groups: sudo
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_import_id:
@@ -37,8 +37,12 @@ runcmd:
   
   # Setup im lautlosen Headless-Modus ausführen. 
   # WICHTIG: In Cloud-Init müssen cd und Ausführung in einem Rutsch via && geschrieben werden!
-  # Wenn ihr noch keine eigene Vereins-Domain habt, lasst hier einfach --domain=AUTO stehen!
-  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh --headless --install=core,nextcloud,website --domain=AUTO > /var/log/pfadfinder-setup.log 2>&1
+  # WICHTIG: "unsere-domain.de" MUSS durch eure echte Domain ersetzt werden!
+  # (Let's Encrypt SSL-Zertifikate funktionieren nur mit einer echten Domain.)
+  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh --headless --install=core,nextcloud,website --domain=unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
+  
+  # Docker-Gruppe dem User zuweisen (Docker wird erst durch setup.sh installiert)
+  - usermod -aG docker pfadiadmin
   
   # Finaler Reboot für sauberes Laden aller neuer Berechtigungen (Docker Groups etc.)
   - reboot
