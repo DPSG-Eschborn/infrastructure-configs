@@ -15,7 +15,7 @@ sudo su -
 
 **Schritt 2:** Lade unsere automatische Server-Einrichtung herunter und starte sie:
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/bootstrap.sh)
+curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/bootstrap.sh -o /tmp/bootstrap.sh && bash /tmp/bootstrap.sh
 ```
 
 **Schritt 3:** Das war's schon! Es öffnet sich nun ein Menü. Es fragt dich auf Deutsch, wie eure Gruppen-Domain heißt und welche Module du installieren willst (tippe `y` um zuzustimmen). Den schweren Rest, inklusive SSL-Zertifikaten (grünes Schloss) und sicheren Datenbank-Passwörtern bauen wir völlig unsichtbar im Hintergrund zusammen.

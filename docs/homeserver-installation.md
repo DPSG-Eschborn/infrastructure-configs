@@ -12,7 +12,7 @@ Um den initialen Aufwand zu minimieren, wird ein Einzeilen-Skript (One-Liner) ve
 3. Du benötigst Root-Rechte. Werde Root (z.B. durch Eingabe von `sudo su` und deinem Passwort) und führe dann den folgenden Befehl aus:
 
    ```bash
-   bash <(curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/bootstrap.sh)
+   curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/bootstrap.sh -o /tmp/bootstrap.sh && bash /tmp/bootstrap.sh
    ```
 
 ### Funktionsweise des Bootstrap-Skripts
@@ -31,5 +31,5 @@ Das `setup.sh` Skript verarbeitet anschließend die weitere Installation, richte
 Das `bootstrap.sh` Skript ist nach P10-Standards gehärtet, um Netzwerkabbrüche oder unvorhergesehene Fehler zu handhaben:
 
 1. **Strict Mode (`set -euo pipefail`):** Fehlende Variablen oder fehlschlagende Befehle führen zum sofortigen und sicheren Abbruch des Skripts.
-2. **Keine imperfekten Downloads:** Die Syntax `bash <(...)` leitet den Code nicht zeilenweise in die Laufzeitumgebung (wie bei `| bash`), sondern stellt sicher, dass das Skript vollständig geladen wurde, bevor es interpretiert wird.
+2. **Keine imperfekten Downloads:** Der Befehl lädt das Skript zuerst vollständig nach `/tmp/bootstrap.sh` herunter. Erst wenn der Download erfolgreich war (`&&`), wird es von Bash interpretiert. Ein abgebrochener Download kann so nie zur Ausführung kommen.
 3. **Idempotenz:** Bei wiederholter Ausführung erkennt das Skript, dass `/opt/pfadfinder-cloud` bereits existiert. Statt eines erneuten Klons oder der Beschädigung lokaler Zustände wird ein sicherer Git-Reset durchgeführt, um den aktuellen Main-Branch wiederherzustellen.
