@@ -41,6 +41,7 @@ Wenn du für den Stamm einen neuen großen Cloud-Server mietest, geht es sogar n
 Falls du tiefer einsteigen willst, um z.B. eine Kassen-Software zu ergänzen, gibt es eigene Fach-Erklärungen:
 - [Wie funktioniert die Hetzner-Installation im Detail?](./docs/hetzner-installation.md)
 - [Wie funktioniert das Homeserver-Setup im Detail?](./docs/homeserver-installation.md)
+- [Wie verbinde ich eine Hetzner Storage Box?](./docs/storagebox-anbindung.md)
 - [Architektur: Wie programmiere ich neue Plugins für das Setup-Menü?](./docs/plugin-entwicklung.md)
 - [Wie kann ich meinen Code bei der DPSG pushen? (CONTRIBUTING)](./CONTRIBUTING.md)
 

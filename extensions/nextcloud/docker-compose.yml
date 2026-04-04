@@ -17,7 +17,8 @@ services:
     image: nextcloud:33
     restart: always
     volumes:
-      - nextcloud_data:/var/www/html
+      - nextcloud_app:/var/www/html
+      - ${NEXTCLOUD_DATA_DIR:-nextcloud_userdata}:/var/www/html/data
     environment:
       - MYSQL_PASSWORD=${DB_PASSWORD}
       - MYSQL_DATABASE=nextcloud
@@ -38,7 +39,8 @@ services:
 
 volumes:
   db_data:
-  nextcloud_data:
+  nextcloud_app:
+  nextcloud_userdata:
 
 networks:
   pfadfinder_net:

@@ -20,14 +20,14 @@ Dies ist der Installer, der auf jedem System ausgeführt wird. Die Hauptaufgaben
 2. Dynamisches Scanning der Modulverzeichnisse (Plugin Auto-Erkennung).
 3. Interaktive Abfrage beim Benutzer (z.B. Domainname, Auswahl der spezifischen Dienste).
 4. Sichere Erstellung von Umgebungsvariablen (`.env` Dateien generiert aus `.env.example`).
-5. Sequenzielles Starten der ausgewählten Module via `docker compose up -d`.
+5. Sequenzielles Starten der ausgewaehlten Module (Docker-Container oder Host-Level-Skripte).
 
 ### 3. Das Modul-System 
 Um das Installations-Skript (`setup.sh`) bei neuen Projekten nicht modifizieren zu müssen, baut das System auf einer autarken Plugin-Struktur auf. Modul-Ordner (wie `/extensions/nextcloud`) beinhalten grundsätzlich drei Dateien:
 
-1. `docker-compose.yml`: Definiert die Container-Umgebung.
-2. `.env.example`: Template für Konfigurationsparameter (wie Kennwörter oder Tokens).
-3. `manifest.env`: Enthält Metadaten für das Setup-Skript.
+1. `manifest.env`: Enthält Metadaten fuer das Setup-Skript.
+2. `docker-compose.yml` **oder** `mount.sh`: Definiert entweder einen Docker-Container oder ein Host-Level-Setup.
+3. `.env.example`: Template fuer Konfigurationsparameter (wie Kennwörter oder Tokens).
 
 Das Skript `setup.sh` sucht beim Start zur Laufzeit nach `manifest.env` Dateien und integriert diese dynamisch in die Modulauswahl der Benutzeroberfläche.
 
@@ -49,6 +49,7 @@ infrastructure-configs/
 ├── docs/                          # Architektur- und Prozessdokumentation
 │   ├── hetzner-installation.md
 │   ├── homeserver-installation.md
+│   ├── storagebox-anbindung.md
 │   └── plugin-entwicklung.md
 ├── cloud-configs/                 # Vorlagen für Cloud-Provider
 │   └── hetzner-basic-node.yaml    # Cloud-Init Template
@@ -62,6 +63,10 @@ infrastructure-configs/
     │   ├── docker-compose.yml
     │   ├── .env.example
     │   └── manifest.env
+    ├── storagebox/                # Host-Level Modul (kein Docker)
+    │   ├── mount.sh               # CIFS-Mount Skript
+    │   ├── .env.example
+    │   └── manifest.env
     └── website/
         ├── docker-compose.yml
         ├── .env.example
@@ -69,6 +74,17 @@ infrastructure-configs/
         │   └── index.html
         └── manifest.env
 ```
+
+### 4. Modul-Typen
+
+Das Setup-Skript erkennt automatisch, welcher Typ ein Modul ist:
+
+| Datei im Modul-Ordner | Typ | Aktion von `setup.sh` |
+| --- | --- | --- |
+| `docker-compose.yml` | Container-Modul | `docker compose up -d` |
+| `mount.sh` | Host-Level-Modul | `bash mount.sh` |
+
+Dadurch koennen Module auch reine System-Konfigurationen durchfuehren (z.B. Dateisysteme mounten, Cron-Jobs einrichten), ohne einen Docker-Container zu benoetigen.
 
 ---
 
