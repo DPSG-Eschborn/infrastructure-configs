@@ -8,8 +8,16 @@ Gut Pfad! 👋 Du willst einen neuen Server für uns aufsetzen und hast nicht vi
 
 ### Windows
 
+**Option A** — Datei herunterladen:
+
 1. Lade [`deploy.bat`](https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.bat) herunter (Rechtsklick → *Ziel speichern unter...*)
 2. Doppelklicke auf die Datei — der Assistent startet automatisch!
+
+**Option B** — PowerShell-Befehl (Rechtsklick auf Start → *Terminal*):
+
+```powershell
+irm https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.ps1 -OutFile $env:TEMP\deploy.ps1; & $env:TEMP\deploy.ps1
+```
 
 ### Linux / macOS
 
