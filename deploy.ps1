@@ -345,7 +345,9 @@ function Get-DeploymentConfig {
                 # Position: nach "core", vor "nextcloud"
                 $idx = $modules.IndexOf("nextcloud")
                 if ($idx -ge 0) {
-                    $modules = $modules[0..$($idx-1)] + @("storagebox") + $modules[$idx..($modules.Count-1)]
+                    # Sicheres Array-Slicing: $modules[0..-1] waere in PS ein Reverse-Slice
+                    $before = if ($idx -gt 0) { @($modules[0..($idx-1)]) } else { @() }
+                    $modules = $before + @("storagebox") + @($modules[$idx..($modules.Count-1)])
                 } else {
                     $modules += "storagebox"
                 }
@@ -356,12 +358,29 @@ function Get-DeploymentConfig {
             }
         }
     }
+
+    # --- Externer Speicher (nur wenn kein StorageBox und Nextcloud aktiv) ---
+    $dataDir = ""
+    if (-not $storageBox -and "nextcloud" -in $modules) {
+        Write-Host "  Nextcloud nutzt standardmaessig die Server-Festplatte."
+        Write-Host "  Falls ihr eine externe Festplatte nutzen wollt:"
+        Write-Host "  - Lokal: Das Setup erkennt angeschlossene Platten automatisch."
+        Write-Host "  - SSH: Gebt den Mount-Pfad an, falls die Platte bereits gemountet ist."
+        Write-Host ""
+        Write-Host "  Benutzerdefinierter Datenpfad (leer = Standard): " -NoNewline
+        $customPath = Read-Host
+        if (-not [string]::IsNullOrWhiteSpace($customPath)) {
+            $dataDir = $customPath
+            Write-Success "Datenpfad: $dataDir"
+        }
+    }
     Write-Host ""
 
     return @{
         Domain     = $domain
         Modules    = $modules
         StorageBox = $storageBox
+        DataDir    = $dataDir
     }
 }
 
@@ -373,13 +392,15 @@ function Show-Summary {
     $modulesStr = $DeployConfig.Modules -join ", "
     $domainStr = if ($DeployConfig.Domain -eq "AUTO") { "Testmodus (IP)" } else { $DeployConfig.Domain }
     $sbStr = if ($DeployConfig.StorageBox) { "$($DeployConfig.StorageBox.User) (aktiv)" } else { "nicht konfiguriert" }
+    $dataStr = if ($DeployConfig.DataDir) { $DeployConfig.DataDir } elseif ($DeployConfig.StorageBox) { "/mnt/storagebox-data (via StorageBox)" } else { "Standard (Server-Festplatte)" }
 
     Write-Banner "Zusammenfassung" @(
         "",
-        "Provider:    $ProviderName",
-        "Domain:      $domainStr",
-        "Module:      $modulesStr",
-        "Storage Box: $sbStr",
+        "Provider:      $ProviderName",
+        "Domain:        $domainStr",
+        "Module:        $modulesStr",
+        "Datenspeicher: $dataStr",
+        "Storage Box:   $sbStr",
         ""
     )
 }
@@ -391,6 +412,8 @@ function Show-Summary {
 function Build-SetupArgs {
     param([hashtable]$Config)
     # Baut die Kommandozeilen-Argumente fuer setup.sh
+    # HINWEIS: Passwörter werden NICHT als CLI-Argument uebergeben,
+    # sondern als Environment-Variable (siehe Build-EnvPrefix).
     $args_list = @(
         "--headless"
         "--install=$($Config.Modules -join ',')"
@@ -398,9 +421,26 @@ function Build-SetupArgs {
     )
     if ($Config.StorageBox) {
         $args_list += "--storagebox-user=$($Config.StorageBox.User)"
-        $args_list += "--storagebox-pass=$($Config.StorageBox.Pass)"
+        # Passwort wird via STORAGEBOX_PASS Umgebungsvariable uebergeben
+    }
+    if ($Config.DataDir) {
+        $args_list += "--data-dir=$($Config.DataDir)"
     }
     return $args_list
+}
+
+function Build-EnvPrefix {
+    param([hashtable]$Config)
+    # Erzeugt einen Bash-Environment-Variable-Prefix fuer sensitive Daten.
+    # Format: STORAGEBOX_PASS='wert' (inline vor dem Befehl)
+    # Vorteil: Nicht in `ps aux` sichtbar, nicht im Logfile.
+    $prefix = ""
+    if ($Config.StorageBox) {
+        # Single-Quotes in bash escapen: ' -> '\''  (Quote beenden, escaped Quote, Quote oeffnen)
+        $escapedPass = $Config.StorageBox.Pass -replace "'", "'\''" 
+        $prefix = "STORAGEBOX_PASS='$escapedPass' "
+    }
+    return $prefix
 }
 
 function Build-CloudInitYaml {
@@ -472,7 +512,7 @@ runcmd:
 
   # Pfadfinder-Cloud Setup
   - git clone $($Script:REPO_URL) /opt/pfadfinder-cloud || { echo 'FATAL: git clone fehlgeschlagen' >> /var/log/pfadfinder-setup.log; exit 1; }
-  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh $setupArgs > /var/log/pfadfinder-setup.log 2>&1
+  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && $(Build-EnvPrefix $DeployConfig)./setup.sh $setupArgs > /var/log/pfadfinder-setup.log 2>&1
 
   # Docker-Gruppe dem Admin-User zuweisen
   - usermod -aG docker pfadiadmin
@@ -566,9 +606,10 @@ function Invoke-SSHDeploy {
     $ip = $SSHConfig.IP
     $port = $SSHConfig.Port
     $setupArgs = (Build-SetupArgs $DeployConfig) -join " "
+    $envPrefix = Build-EnvPrefix $DeployConfig
 
     # Einzeiliger Remote-Befehl: Bootstrap + Setup
-    $remoteCommand = "curl -sL $($Script:BOOTSTRAP_URL) -o /tmp/bootstrap.sh && bash /tmp/bootstrap.sh $setupArgs"
+    $remoteCommand = "curl -sL $($Script:BOOTSTRAP_URL) -o /tmp/bootstrap.sh && ${envPrefix}bash /tmp/bootstrap.sh $setupArgs"
 
     # Base64-Kodierung um Shell-Escaping-Probleme zu vermeiden
     # (Schuetzt Sonderzeichen in Passwoertern vor Shell-Interpretation)
@@ -614,7 +655,8 @@ function Invoke-LocalDeploy {
     Write-Info "Pruefe Betriebssystem..."
     if ($IsLinux -or (Test-Path "/etc/os-release")) {
         $setupArgs = (Build-SetupArgs $DeployConfig) -join " "
-        $cmd = "curl -sL $($Script:BOOTSTRAP_URL) -o /tmp/bootstrap.sh && bash /tmp/bootstrap.sh $setupArgs"
+        $envPrefix = Build-EnvPrefix $DeployConfig
+        $cmd = "curl -sL $($Script:BOOTSTRAP_URL) -o /tmp/bootstrap.sh && ${envPrefix}bash /tmp/bootstrap.sh $setupArgs"
         Write-Info "Starte bootstrap.sh..."
         & bash -c $cmd
     } else {
