@@ -74,7 +74,7 @@ shopt -u nullglob
 # 3. Interaktives Menü (falls nicht Headless)
 if [ "$MODE" = "interactive" ]; then
     echo ""
-    read -p "Welche Basis-Domain möchtest du konfigurieren? (z.B. cloud.pfadi.de): " DOMAIN_INPUT
+    read -p "Welche Basis-Domain möchtest du konfigurieren? (leer lassen für Test-Modus): " DOMAIN_INPUT
     if [ -n "$DOMAIN_INPUT" ]; then
         DOMAIN="$DOMAIN_INPUT"
     fi
@@ -100,6 +100,19 @@ if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "AUTO" ]; then
         echo "[!] FEHLER: Konnte Server IP nicht ermitteln. Abbruch."
         exit 1
     fi
+fi
+
+# Test-Modus Erkennung: .nip.io Domains können kein SSL bekommen
+TEST_MODE=false
+if [[ "$DOMAIN" == *.nip.io ]]; then
+    TEST_MODE=true
+    echo ""
+    echo "============================================"
+    echo "[!] TEST-MODUS AKTIV"
+    echo "[!] .nip.io Domain erkannt - HTTPS wird deaktiviert."
+    echo "[!] SSL-Zertifikate sind nur mit einer echten Domain möglich."
+    echo "[!] Alle Dienste werden über HTTP erreichbar sein."
+    echo "============================================"
 fi
 
 # 4. Konstantes Deployment Network erstellen
@@ -153,6 +166,20 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
             echo "    -> Modul wurde bereis früher konfiguriert (.env existiert). Überspring Generierung."
         fi
         
+        # Test-Modus: Compose-Dateien für HTTP-Betrieb anpassen
+        if [ "$TEST_MODE" = true ]; then
+            echo "    -> Test-Modus: Passe auf HTTP-Betrieb an..."
+            if [ "$mod" = "core" ]; then
+                # Traefik: HTTPS-Redirect deaktivieren (aber Entrypoints beibehalten)
+                sed -i '/redirections/d' "$MOD_PATH/docker-compose.yml"
+            else
+                # Services: Entrypoint von websecure auf web (HTTP) umstellen
+                sed -i 's/websecure/web/g' "$MOD_PATH/docker-compose.yml"
+                # Certresolver-Labels entfernen (kein SSL ohne echte Domain)
+                sed -i '/certresolver/d' "$MOD_PATH/docker-compose.yml"
+            fi
+        fi
+        
         # P10 Standard: Idempotenz (up -d startet nur neu, wenn sich das image ändert)
         echo "    -> Starte Container..."
         cd "$MOD_PATH"
@@ -165,6 +192,20 @@ done
 
 echo ""
 echo "========================================="
-echo "Setup abgeschlossen"
+echo "Setup abgeschlossen!"
 echo "Basis-Domain: $DOMAIN"
+if [ "$TEST_MODE" = true ]; then
+    echo ""
+    echo "Deine Dienste sind erreichbar unter:"
+    echo "  Nextcloud: http://cloud.$DOMAIN"
+    echo "  Website:   http://www.$DOMAIN"
+    echo ""
+    echo "Fuer SSL mit einer echten Domain spaeter erneut ausfuehren:"
+    echo "  ./setup.sh --headless --install=core,nextcloud,website --domain=eure-domain.de"
+else
+    echo ""
+    echo "Deine Dienste sind erreichbar unter:"
+    echo "  Nextcloud: https://cloud.$DOMAIN"
+    echo "  Website:   https://www.$DOMAIN"
+fi
 echo "========================================="

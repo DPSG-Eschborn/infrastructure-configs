@@ -37,9 +37,9 @@ runcmd:
   
   # Setup im lautlosen Headless-Modus ausführen. 
   # WICHTIG: In Cloud-Init müssen cd und Ausführung in einem Rutsch via && geschrieben werden!
-  # WICHTIG: "unsere-domain.de" MUSS durch eure echte Domain ersetzt werden!
-  # (Let's Encrypt SSL-Zertifikate funktionieren nur mit einer echten Domain.)
-  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh --headless --install=core,nextcloud,website --domain=unsere-domain.de > /var/log/pfadfinder-setup.log 2>&1
+  # --domain=AUTO erkennt die Server-IP automatisch und startet im HTTP-Test-Modus.
+  # Wenn ihr eine echte Domain habt, ersetzt AUTO durch: --domain=eure-domain.de
+  - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh --headless --install=core,nextcloud,website --domain=AUTO > /var/log/pfadfinder-setup.log 2>&1
   
   # Docker-Gruppe dem User zuweisen (Docker wird erst durch setup.sh installiert)
   - usermod -aG docker pfadiadmin
