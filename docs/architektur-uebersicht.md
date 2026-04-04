@@ -59,24 +59,26 @@ flowchart TD
 
 ---
 
-## Phase 1: Einstieg — Drei Wege zum Assistenten
+## Phase 1: Einstieg — Wie der Assistent gestartet wird
 
-Der Assistent ist auf **jedem Betriebssystem** aufrufbar:
+Der Assistent existiert in zwei gleichwertigen Implementierungen — eine für Windows (PowerShell), eine für Linux/macOS (Bash). Beide bieten exakt dieselbe Funktionalität.
 
-| Betriebssystem | Einstieg | Datei |
+| Betriebssystem | Was der User tut | Was technisch passiert |
 | --- | --- | --- |
-| **Windows** (Option A) | `deploy.bat` herunterladen + Doppelklick | `deploy.bat` lädt `deploy.ps1` automatisch von GitHub |
-| **Windows** (Option B) | PowerShell-Einzeiler | `irm URL -OutFile ...; & ...` |
-| **Linux / macOS** | Terminal-Einzeiler | `curl -sL URL -o /tmp/deploy.sh && bash /tmp/deploy.sh` |
-| **Direkt am Server** | Terminal | `sudo ./setup.sh --interactive` |
+| **Windows** | `deploy.bat` herunterladen + Doppelklick | `deploy.bat` lädt `deploy.ps1` von GitHub herunter und führt es aus |
+| **Windows** | PowerShell-Befehl (siehe README) | `deploy.ps1` wird direkt in den TEMP-Ordner geladen und gestartet |
+| **Linux / macOS** | Terminal-Befehl (siehe README) | `deploy.sh` wird nach `/tmp/` geladen und mit `bash` ausgeführt |
+| **Direkt am Server** | `sudo ./setup.sh` im Terminal | Kein Wizard — setup.sh startet direkt im interaktiven Modus |
 
-> **Hinweis:** `deploy.bat` ist standalone — es enthält keinen Code, sondern lädt `deploy.ps1` bei jeder Ausführung frisch von GitHub herunter. So ist der Assistent immer auf dem neuesten Stand.
+> **Architektur-Prinzip:** Kein Einstiegspunkt enthält Logik — `deploy.bat` lädt den echten Code bei jeder Ausführung frisch von GitHub. So ist der Assistent immer auf dem neuesten Stand, ohne dass der User etwas aktualisieren muss. Die konkreten Befehle stehen in der [README](../README.md).
 
 ---
 
 ## Phase 2: Provider-Auswahl — Die 3 Wege
 
-### Weg 1: Hetzner Cloud (Vollautomat)
+Alle drei Wege führen zum selben Ergebnis: **bootstrap.sh** klont das Repo, **setup.sh** übernimmt. Die Schritte auf dem Server sind identisch — nur der Weg dorthin unterscheidet sich.
+
+### Weg 1: Hetzner Cloud (Vollautomatisch)
 
 ```mermaid
 sequenceDiagram
@@ -85,37 +87,28 @@ sequenceDiagram
     participant API as Hetzner API
     participant SRV as Neuer Server
 
-    U->>W: Waehlt Hetzner Cloud
-    W->>U: Fragt nach API-Token
-    U->>W: Token eingeben
-    W->>API: GET /ssh_keys Token testen
+    U->>W: 1. Waehlt Hetzner Cloud
+    W->>U: 2. Fragt API-Token + Konfig
+    U->>W: 3. Token + Domain + Module eingeben
+    W->>API: 4. GET /ssh_keys - Token validieren
     API-->>W: 200 OK
 
-    W->>U: Fragt nach Domain und Modulen
-    U->>W: Konfiguration eingeben
-
-    W->>W: Cloud-Init YAML generieren
-    W->>API: POST /servers mit Cloud-Init
+    W->>W: 5. Cloud-Init YAML generieren
+    W->>API: 6. POST /servers mit Cloud-Init
     API-->>W: Server-ID + IP + Root-Passwort
+    W->>W: 7. Pollt API bis Status running
+    API->>SRV: 8. Server erstellt + Cloud-Init startet
 
-    W->>W: Pollt API bis Status running
+    rect rgb(50, 50, 80)
+        Note over SRV: Server-Pipeline - identisch fuer alle Wege
+        Note over SRV: A. OS-Haertung - fail2ban + UFW + auto-upgrades
+        Note over SRV: B. Docker installieren - falls nicht vorhanden
+        Note over SRV: C. bootstrap.sh - git clone Repo
+        Note over SRV: D. setup.sh - Module deployen
+    end
 
-    Note over SRV: Server bootet und Cloud-Init laeuft
-    Note over SRV: 1. OS-Haertung: fail2ban + UFW + Updates
-    Note over SRV: 2. git clone Repo
-    Note over SRV: 3. setup.sh headless
-    Note over SRV: 4. Docker + Traefik + Nextcloud
-
-    W->>U: Zeigt IP und URLs und Root-Passwort
+    W->>U: 9. Zeigt IP + URLs + Root-Passwort
 ```
-
-**Was der User eingeben muss:**
-
-1. Hetzner API-Token (5 Klicks in der Hetzner Console)
-2. Optional: GitHub-Username (für SSH-Zugang per Key)
-3. Domain (oder leer für Testmodus)
-4. Module auswählen (y/n pro Modul)
-5. Optional: Storage Box oder externe Festplatte
 
 ### Weg 2: Eigener Server (SSH)
 
@@ -125,33 +118,61 @@ sequenceDiagram
     participant W as Wizard
     participant SRV as Linux-Server
 
-    U->>W: Waehlt Eigener Server
-    W->>U: Fragt nach IP + Port
-    U->>W: z.B. 123.45.67.89
+    U->>W: 1. Waehlt Eigener Server
+    W->>U: 2. Fragt IP + Port + Konfig
+    U->>W: 3. IP + Domain + Module eingeben
 
-    W->>U: Fragt nach Domain und Modulen
-    U->>W: Konfiguration eingeben
-
-    W->>W: Baut Setup-Befehl
-    W->>W: Base64-kodiert fuer Escaping-Schutz
-
-    W->>SRV: ssh root@IP echo BASE64 und base64 -d und bash
+    W->>W: 4. Setup-Befehl Base64-kodieren
+    W->>SRV: 5. SSH-Verbindung oeffnen
     Note over U: User tippt Root-Passwort
 
-    Note over SRV: bootstrap.sh laeuft
-    Note over SRV: 1. apt install git curl
-    Note over SRV: 2. git clone Repo
-    Note over SRV: 3. STORAGEBOX_PASS=xxx setup.sh headless
+    rect rgb(50, 50, 80)
+        Note over SRV: Server-Pipeline - identisch fuer alle Wege
+        Note over SRV: A. OS-Haertung - fail2ban + UFW + auto-upgrades
+        Note over SRV: B. Docker installieren - falls nicht vorhanden
+        Note over SRV: C. bootstrap.sh - git clone Repo
+        Note over SRV: D. STORAGEBOX_PASS=xxx setup.sh - Module deployen
+    end
 
-    SRV-->>W: Exit Code 0
-    W->>U: Zeigt URLs
+    SRV-->>W: 6. Exit Code 0
+    W->>U: 7. Zeigt URLs
 ```
-
-> **Sicherheit:** Das StorageBox-Passwort wird als **Environment-Variable** übergeben (`STORAGEBOX_PASS='...' ./setup.sh`), nicht als CLI-Argument. Dadurch ist es weder in `ps aux` noch in Logfiles sichtbar.
 
 ### Weg 3: Lokal (Homeserver / Raspberry Pi)
 
-Identisch zu Weg 2, aber ohne SSH. Das Skript erkennt automatisch ob Root-Rechte vorhanden sind und fragt bei Bedarf nach dem `sudo`-Passwort. Nur sinnvoll wenn der User direkt am Server-Terminal sitzt.
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant W as Wizard/Server
+
+    U->>W: 1. Waehlt Lokal
+    W->>U: 2. Fragt Domain + Module
+    U->>W: 3. Konfiguration eingeben
+    W->>W: 4. Root-Check - sudo falls noetig
+
+    rect rgb(50, 50, 80)
+        Note over W: Server-Pipeline - identisch fuer alle Wege
+        Note over W: A. OS-Haertung - fail2ban + UFW + auto-upgrades
+        Note over W: B. Docker installieren - falls nicht vorhanden
+        Note over W: C. bootstrap.sh - git clone Repo
+        Note over W: D. setup.sh - Module deployen
+    end
+
+    W->>U: 5. Zeigt URLs
+```
+
+### Die Server-Pipeline (Schritte A–D)
+
+Unabhängig vom Provider läuft auf dem Zielserver immer dieselbe Sequenz:
+
+| Schritt | Was passiert | Idempotent? |
+| --- | --- | --- |
+| **A. OS-Härtung** | fail2ban, UFW (nur 22/80/443), unattended-upgrades, SSH-Härtung | ✅ Ja |
+| **B. Docker** | Prüft ob Docker installiert ist, installiert es bei Bedarf via `get.docker.com` | ✅ Ja |
+| **C. bootstrap.sh** | Klont/aktualisiert das Repo nach `/opt/pfadfinder-cloud` | ✅ Ja |
+| **D. setup.sh** | Plugin-Scan → .env generieren → Data-Dir setzen → `docker compose up -d` | ✅ Ja |
+
+> **Sicherheit:** Das StorageBox-Passwort wird als **Environment-Variable** übergeben (`STORAGEBOX_PASS='...' ./setup.sh`), nicht als CLI-Argument. Dadurch ist es weder in `ps aux` noch in Logfiles sichtbar.
 
 ---
 
