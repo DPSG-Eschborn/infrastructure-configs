@@ -4,14 +4,25 @@ Gut Pfad! 👋 Du willst einen neuen Server für uns aufsetzen und hast nicht vi
 
 ---
 
-## 🎯 DER EINFACHSTE WEG (Windows — 0 Vorkenntnisse nötig)
+## 🎯 DER EINFACHSTE WEG (0 Vorkenntnisse nötig)
 
-1. Lade dieses Projekt als ZIP herunter (grüner **Code** Button oben → **Download ZIP**)
-2. Entpacke den Ordner irgendwo auf deinem PC
-3. Doppelklicke auf **`deploy.bat`**
-4. Folge dem Assistenten — er fragt alles Schritt für Schritt!
+### Windows
+
+1. Lade [`deploy.bat`](https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.bat) herunter (Rechtsklick → *Ziel speichern unter...*)
+2. Doppelklicke auf die Datei — der Assistent startet automatisch!
+
+### Linux / macOS
+
+Öffne ein Terminal und führe diesen einen Befehl aus:
+
+```bash
+curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.sh -o /tmp/deploy.sh && bash /tmp/deploy.sh
+```
+
+### Was kann der Assistent?
 
 Der Assistent kann:
+
 - Einen **neuen Hetzner-Server** automatisch für euch erstellen (nur API-Token nötig)
 - Einen **bestehenden Server** per SSH einrichten (nur IP-Adresse + Passwort nötig)
 - Einen **lokalen Homeserver** direkt konfigurieren
@@ -64,4 +75,3 @@ Falls du tiefer einsteigen willst, um z.B. eine Kassen-Software zu ergänzen, gi
 - [Wie kann ich meinen Code bei der DPSG pushen? (CONTRIBUTING)](./CONTRIBUTING.md)
 
 *Viel Spaß und Gut Pfad!*
-
