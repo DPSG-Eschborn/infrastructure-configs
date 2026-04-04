@@ -19,7 +19,7 @@ STORAGEBOX_PASS="${STORAGEBOX_PASS:-}"
 CUSTOM_DATA_DIR="${CUSTOM_DATA_DIR:-}"
 
 # ╔═══════════════════════════════════════════════════╗
-# ║              HILFSFUNKTIONEN                       ║
+# ║              HILFSFUNKTIONEN                      ║
 # ╚═══════════════════════════════════════════════════╝
 
 # Sonderzeichen fuer sed-Ersetzungen escapen
@@ -192,7 +192,7 @@ echo "========================================="
 echo "Modus: $MODE"
 
 # ╔═══════════════════════════════════════════════════╗
-# ║       1. SYSTEMVORAUSSETZUNGEN                     ║
+# ║       1. SYSTEMVORAUSSETZUNGEN                    ║
 # ╚═══════════════════════════════════════════════════╝
 
 # 1a. Docker installieren (Idempotent)
@@ -259,7 +259,7 @@ else
 fi
 
 # ╔═══════════════════════════════════════════════════╗
-# ║       2. PLUGIN-SYSTEM (AUTO-ERKENNUNG)            ║
+# ║       2. PLUGIN-SYSTEM (AUTO-ERKENNUNG)           ║
 # ╚═══════════════════════════════════════════════════╝
 
 declare -A PLUGINS_NAME
@@ -284,7 +284,7 @@ done
 shopt -u nullglob
 
 # ╔═══════════════════════════════════════════════════╗
-# ║       3. INTERAKTIVES MENU                         ║
+# ║       3. INTERAKTIVES MENU                        ║
 # ╚═══════════════════════════════════════════════════╝
 
 if [ "$MODE" = "interactive" ]; then
@@ -400,7 +400,7 @@ if [ -n "$STORAGEBOX_USER" ] && [ -n "$STORAGEBOX_PASS" ] && [ -z "$CUSTOM_DATA_
 fi
 
 # ╔═══════════════════════════════════════════════════╗
-# ║       5. DOCKER NETZWERK                           ║
+# ║       5. DOCKER NETZWERK                          ║
 # ╚═══════════════════════════════════════════════════╝
 
 echo ""
@@ -413,7 +413,7 @@ else
 fi
 
 # ╔═══════════════════════════════════════════════════╗
-# ║       6. DEPLOYMENT                                ║
+# ║       6. DEPLOYMENT                               ║
 # ╚═══════════════════════════════════════════════════╝
 
 echo ""
@@ -514,7 +514,7 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
 done
 
 # ╔═══════════════════════════════════════════════════╗
-# ║       7. ERGEBNIS                                  ║
+# ║       7. ERGEBNIS                                 ║
 # ╚═══════════════════════════════════════════════════╝
 
 echo ""
