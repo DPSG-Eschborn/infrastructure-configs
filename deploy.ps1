@@ -249,8 +249,24 @@ function Get-SSHConfig {
         Write-Warn "Ungueltige IP-Adresse. Format: z.B. 123.45.67.89"
     }
 
-    # SSH-Port
-    $port = Read-Choice "SSH-Port" @("22","2222","2200","23") "22"
+    # SSH-Port (Freitext mit Validierung)
+    $port = "22"
+    while ($true) {
+        Write-Host "SSH-Port [22]: " -NoNewline
+        $portInput = Read-Host
+        if ([string]::IsNullOrWhiteSpace($portInput)) {
+            $port = "22"
+            break
+        }
+        if ($portInput -match '^\d{1,5}$') {
+            $portNum = [int]$portInput
+            if ($portNum -ge 1 -and $portNum -le 65535) {
+                $port = $portInput
+                break
+            }
+        }
+        Write-Warn "Ungueltiger Port. Erlaubt: 1-65535"
+    }
 
     return @{
         IP   = $ip
@@ -421,7 +437,7 @@ packages:
   - openssl
 
 runcmd:
-  - git clone $($Script:REPO_URL) /opt/pfadfinder-cloud
+  - git clone $($Script:REPO_URL) /opt/pfadfinder-cloud || { echo 'FATAL: git clone fehlgeschlagen' >> /var/log/pfadfinder-setup.log; exit 1; }
   - cd /opt/pfadfinder-cloud && chmod +x setup.sh && ./setup.sh $setupArgs > /var/log/pfadfinder-setup.log 2>&1
   - usermod -aG docker pfadiadmin
 "@
