@@ -36,6 +36,14 @@ fi
 echo "[3/4] Setze Berechtigungen..."
 chmod +x setup.sh
 
-echo "[4/4] Starte interaktives Setup-Menü..."
-echo "-----------------------------------------"
-./setup.sh --interactive
+# Wenn Argumente uebergeben wurden, leite sie an setup.sh weiter.
+# Ohne Argumente: Interaktiver Modus (Standard fuer manuelle Ausfuehrung).
+if [ $# -gt 0 ]; then
+    echo "[4/4] Starte Setup im Headless-Modus..."
+    echo "-----------------------------------------"
+    ./setup.sh "$@"
+else
+    echo "[4/4] Starte interaktives Setup-Menü..."
+    echo "-----------------------------------------"
+    ./setup.sh --interactive
+fi

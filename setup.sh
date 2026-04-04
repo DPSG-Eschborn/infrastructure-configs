@@ -15,6 +15,12 @@ DOMAIN=""
 STORAGEBOX_USER=""
 STORAGEBOX_PASS=""
 
+# Hilfsfunktion: Sonderzeichen fuer sed-Ersetzungen escapen
+# Verhindert dass /, & oder \ in Werten den sed-Parser brechen
+escape_sed() {
+    printf '%s' "$1" | sed 's/[&/\\]/\\&/g'
+}
+
 # Parameter verarbeiten (Headless Mode Handler)
 for arg in "$@"; do
     case $arg in
@@ -28,6 +34,8 @@ for arg in "$@"; do
             done
             ;;
         --domain=*) DOMAIN="${arg#*=}" ;;
+        --storagebox-user=*) STORAGEBOX_USER="${arg#*=}" ;;
+        --storagebox-pass=*) STORAGEBOX_PASS="${arg#*=}" ;;
     esac
 done
 
@@ -109,8 +117,12 @@ if [ "$MODE" = "interactive" ]; then
             
             if [ -z "$STORAGEBOX_USER" ] || [ -z "$STORAGEBOX_PASS" ]; then
                 echo "[!] Kein Username oder Passwort eingegeben. Storage Box wird uebersprungen."
-                # Modul aus der Liste entfernen
-                INSTALL_MODULES=("${INSTALL_MODULES[@]/storagebox}")
+                # Modul sauber aus der Liste entfernen (ohne leere Elemente)
+                local filtered=()
+                for m in "${INSTALL_MODULES[@]}"; do
+                    [[ "$m" != "storagebox" ]] && filtered+=("$m")
+                done
+                INSTALL_MODULES=("${filtered[@]}")
             else
                 echo "[OK] Storage Box Zugangsdaten erfasst."
             fi
@@ -178,18 +190,20 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
                 cp "$MOD_PATH/.env.example" "$TMP_ENV"
                 
                 # Injection: Platzhalter mit Werten ersetzen
-                sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" "$TMP_ENV"
+                # escape_sed() schuetzt Sonderzeichen (/, &, \) vor sed-Interpretation
+                sed -i "s/DOMAIN_PLACEHOLDER/$(escape_sed "$DOMAIN")/g" "$TMP_ENV"
                 
                 # Storage Box Platzhalter ersetzen (falls vorhanden)
                 if [ -n "$STORAGEBOX_USER" ]; then
-                    sed -i "s/STORAGEBOX_PLACEHOLDER/$STORAGEBOX_USER/g" "$TMP_ENV"
+                    sed -i "s/STORAGEBOX_PLACEHOLDER/$(escape_sed "$STORAGEBOX_USER")/g" "$TMP_ENV"
                 fi
                 if [ -n "$STORAGEBOX_PASS" ]; then
-                    sed -i "s/STORAGEBOXPW_PLACEHOLDER/$STORAGEBOX_PASS/g" "$TMP_ENV"
+                    sed -i "s/STORAGEBOXPW_PLACEHOLDER/$(escape_sed "$STORAGEBOX_PASS")/g" "$TMP_ENV"
                 fi
                 
-                # Wenn Passwörter gefordert werden, sichere zufällige Passwörter generieren
+                # Wenn Passwoerter gefordert werden, sichere zufaellige Passwoerter generieren
                 # Jedes Vorkommen von PASSWORD_PLACEHOLDER bekommt sein eigenes Passwort
+                # (openssl rand -hex erzeugt nur [0-9a-f], daher kein Escaping noetig)
                 while grep -q 'PASSWORD_PLACEHOLDER' "$TMP_ENV"; do
                     RANDOM_PW=$(openssl rand -hex 16)
                     sed -i "0,/PASSWORD_PLACEHOLDER/s/PASSWORD_PLACEHOLDER/$RANDOM_PW/" "$TMP_ENV"
@@ -203,8 +217,18 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
             echo "    -> Modul wurde bereits frueher konfiguriert (.env existiert). Ueberspringe Generierung."
         fi
         
-        # Test-Modus: Compose-Dateien für HTTP-Betrieb anpassen
-        if [ "$TEST_MODE" = true ]; then
+        # Compose-Datei: Original wiederherstellen falls Backup vorhanden
+        # (Ermoeglicht sauberen Wechsel Test-Modus <-> Produktiv-Modus)
+        if [ -f "$MOD_PATH/docker-compose.yml.original" ]; then
+            cp "$MOD_PATH/docker-compose.yml.original" "$MOD_PATH/docker-compose.yml"
+        fi
+        
+        # Test-Modus: Compose-Dateien fuer HTTP-Betrieb anpassen
+        if [ "$TEST_MODE" = true ] && [ -f "$MOD_PATH/docker-compose.yml" ]; then
+            # Backup erstellen (einmalig), damit spaetere Produktiv-Laeufe sauber starten
+            if [ ! -f "$MOD_PATH/docker-compose.yml.original" ]; then
+                cp "$MOD_PATH/docker-compose.yml" "$MOD_PATH/docker-compose.yml.original"
+            fi
             echo "    -> Test-Modus: Passe auf HTTP-Betrieb an..."
             if [ "$mod" = "core" ]; then
                 # Traefik: HTTPS-Redirect deaktivieren (aber Entrypoints beibehalten)
