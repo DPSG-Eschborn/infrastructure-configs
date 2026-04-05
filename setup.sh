@@ -28,142 +28,7 @@ escape_sed() {
     printf '%s' "$1" | sed 's/[&/\\]/\\&/g'
 }
 
-# Externe Festplatte erkennen, formatieren und mounten
-# Gibt 0 zurueck wenn erfolgreich, 1 wenn uebersprungen/fehlgeschlagen
-configure_external_disk() {
-    echo ""
-    echo "============================================"
-    echo "   Externe Festplatte fuer Nextcloud"
-    echo "============================================"
-    echo ""
-    echo "[-] Suche nach verfuegbaren Festplatten..."
-
-    # System-Disk ermitteln (die Festplatte auf der / liegt)
-    local root_source
-    root_source=$(findmnt -n -o SOURCE / 2>/dev/null || echo "")
-    # Device-Name ohne Partitionsnummer (z.B. /dev/sda1 -> /dev/sda)
-    local root_disk
-    root_disk=$(echo "$root_source" | sed 's/[0-9]*$//' | sed 's/p[0-9]*$//')
-
-    # Alle Block-Devices sammeln (ohne Loops, ROM, System-Disk)
-    local disk_devs=()
-    local disk_labels=()
-    while IFS= read -r line; do
-        local dev size
-        dev=$(echo "$line" | awk '{print $1}')
-        size=$(echo "$line" | awk '{print $2}')
-
-        # System-Disk ueberspringen
-        [[ "$dev" == "$root_disk" ]] && continue
-
-        disk_devs+=("$dev")
-        disk_labels+=("$dev  ($size)")
-    done < <(lsblk -dpno NAME,SIZE 2>/dev/null | grep -v "loop\|sr\|rom\|zram")
-
-    if [ ${#disk_devs[@]} -eq 0 ]; then
-        echo ""
-        echo "    Keine externen Festplatten gefunden."
-        echo "    Nextcloud nutzt den Standard-Speicher (Server-Festplatte)."
-        return 1
-    fi
-
-    echo ""
-    echo "    Verfuegbare Festplatten:"
-    local i
-    for i in "${!disk_labels[@]}"; do
-        echo "    [$((i+1))] ${disk_labels[$i]}"
-    done
-    echo ""
-    echo "    [0] Keine — Standard-Speicher verwenden"
-    echo ""
-    read -p "Auswahl: " disk_choice
-
-    if [ -z "$disk_choice" ] || [ "$disk_choice" = "0" ]; then
-        return 1
-    fi
-
-    local idx=$((disk_choice - 1))
-    if [ "$idx" -lt 0 ] || [ "$idx" -ge ${#disk_devs[@]} ]; then
-        echo "[!] Ungueltige Auswahl."
-        return 1
-    fi
-
-    local selected_dev="${disk_devs[$idx]}"
-    local mount_point="/mnt/nextcloud-data"
-
-    # Erste Partition finden (oder Device selbst verwenden wenn keine Partitionen)
-    local part_dev="$selected_dev"
-    local first_part
-    first_part=$(lsblk -lnpo NAME,TYPE "$selected_dev" 2>/dev/null | awk '$2 == "part" {print $1; exit}')
-    if [ -n "$first_part" ]; then
-        part_dev="$first_part"
-    fi
-
-    # Dateisystem pruefen
-    local fs_type
-    fs_type=$(lsblk -no FSTYPE "$part_dev" 2>/dev/null | head -1 | tr -d ' ')
-
-    if [ -z "$fs_type" ]; then
-        echo ""
-        echo "[!] $part_dev hat KEIN Dateisystem."
-        echo "    Die Festplatte muss formatiert werden."
-        echo ""
-        read -p "    Als ext4 formatieren? (ALLE DATEN GEHEN VERLOREN!) (y/n): " fmt_choice
-        if [[ "$fmt_choice" =~ ^[yYjJ] ]]; then
-            echo "    Formatiere $part_dev als ext4..."
-            mkfs.ext4 -F "$part_dev"
-            echo "    -> Formatierung abgeschlossen."
-        else
-            echo "    Abgebrochen."
-            return 1
-        fi
-    else
-        echo "    -> Dateisystem erkannt: $fs_type"
-    fi
-
-    # Mount-Punkt erstellen
-    mkdir -p "$mount_point"
-
-    # fstab-Eintrag (idempotent: nur hinzufuegen wenn noch keiner existiert)
-    if ! grep -q " ${mount_point} " /etc/fstab 2>/dev/null; then
-        local disk_uuid
-        disk_uuid=$(blkid -s UUID -o value "$part_dev" 2>/dev/null || echo "")
-        if [ -n "$disk_uuid" ]; then
-            echo "UUID=$disk_uuid $mount_point auto defaults,nofail 0 2" >> /etc/fstab
-            echo "    -> fstab-Eintrag hinzugefuegt (UUID=$disk_uuid)."
-        else
-            echo "$part_dev $mount_point auto defaults,nofail 0 2" >> /etc/fstab
-            echo "    -> fstab-Eintrag hinzugefuegt ($part_dev)."
-        fi
-    else
-        echo "    -> fstab-Eintrag existiert bereits."
-    fi
-
-    # Mounten (falls noch nicht)
-    if ! mountpoint -q "$mount_point" 2>/dev/null; then
-        if mount "$mount_point"; then
-            echo "    -> Festplatte gemountet."
-        else
-            echo "[!] WARNUNG: Mount fehlgeschlagen. Prüfe die Festplatte."
-            return 1
-        fi
-    else
-        echo "    -> Bereits gemountet."
-    fi
-
-    # Berechtigungen fuer Nextcloud (www-data: uid=33, gid=33)
-    chown 33:33 "$mount_point"
-    chmod 770 "$mount_point"
-
-    echo ""
-    echo "[OK] Festplatte konfiguriert:"
-    echo "     Device:     $part_dev"
-    echo "     Mount:      $mount_point"
-    echo "     Nextcloud nutzt diese Festplatte als Datenspeicher."
-
-    CUSTOM_DATA_DIR="$mount_point"
-    return 0
-}
+# External disk logic moved to extensions/nextcloud/configure.sh
 
 # ╔═══════════════════════════════════════════════════╗
 # ║              PARAMETER VERARBEITEN                ║
@@ -304,65 +169,55 @@ if [ "$MODE" = "interactive" ]; then
         esac
     done
 
-    # Pruefen welche Module ausgewaehlt sind
-    _has_nextcloud=false
-    _has_storagebox=false
-    for _mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
-        [ "$_mod" = "nextcloud" ] && _has_nextcloud=true
-        [ "$_mod" = "storagebox" ] && _has_storagebox=true
+    # Setup-API fuer validate.sh exportieren
+    ACTIVE_MODULES="${INSTALL_MODULES[*]}"
+    export ACTIVE_MODULES
+
+    # --- Phase 2: VALIDATE ---
+    # Entfernt Module, die ihre Abhaengigkeiten nicht erfuellen (z.B. StorageBox ohne Nextcloud)
+    VALIDATED_MODULES=()
+    for mod in "${INSTALL_MODULES[@]}"; do
+        if [[ -n "${PLUGINS_PATH[$mod]:-}" ]]; then
+            MOD_PATH="${PLUGINS_PATH[$mod]}"
+            if [ -f "$MOD_PATH/validate.sh" ]; then
+                if ! bash "$MOD_PATH/validate.sh"; then
+                    continue # Modul wird uebersprungen/entfernt
+                fi
+            fi
+        fi
+        VALIDATED_MODULES+=("$mod")
     done
+    INSTALL_MODULES=("${VALIDATED_MODULES[@]}")
+    
+    # ACTIVE_MODULES nach Validation updaten
+    ACTIVE_MODULES="${INSTALL_MODULES[*]}"
+    export ACTIVE_MODULES
 
-    # StorageBox ohne Nextcloud ergibt keinen Sinn
-    if [ "$_has_storagebox" = true ] && [ "$_has_nextcloud" = false ]; then
-        echo ""
-        echo "[!] WARNUNG: Storage Box ohne Nextcloud hat keinen Effekt."
-        echo "    Die Storage Box wird nur als Nextcloud-Datenspeicher genutzt."
-        echo "    Storage Box wird aus der Auswahl entfernt."
-        _filtered=()
-        for _m in "${INSTALL_MODULES[@]}"; do
-            [[ "$_m" != "storagebox" ]] && _filtered+=("$_m")
-        done
-        INSTALL_MODULES=("${_filtered[@]}")
-        _has_storagebox=false
-    fi
+    # --- Phase 3: CONFIGURE ---
+    # Führt interaktive Abfragen (z.B. Credentials, Festplatte) auf Basis der aktivierten Module aus
+    export ASSISTANT_MODE="$MODE"
+    # Wenn von außen z.B. per CLI Argument gesetzt, exportieren wir das für configure.sh
+    export CUSTOM_DATA_DIR="${CUSTOM_DATA_DIR:-}"
+    export SYSTEM_DOMAIN="$DOMAIN"
 
-    # Storage Box Konfigurationsdialog
-    if [ "$_has_storagebox" = true ]; then
-        echo ""
-        echo "============================================"
-        echo "   Hetzner Storage Box Konfiguration"
-        echo "============================================"
-        echo ""
-        echo "WICHTIG: Stelle sicher, dass SMB-Support in der Hetzner Console"
-        echo "aktiviert ist, bevor du fortfaehrst!"
-        echo "(Hetzner Console -> Storage Box -> Einstellungen -> Samba aktivieren)"
-        echo ""
-        read -p "Dein Storage Box Username (z.B. u123456): " STORAGEBOX_USER
-        read -s -p "Dein Storage Box Passwort: " STORAGEBOX_PASS
-        echo ""
-
-        if [ -z "$STORAGEBOX_USER" ] || [ -z "$STORAGEBOX_PASS" ]; then
-            echo "[!] Kein Username oder Passwort eingegeben. Storage Box wird uebersprungen."
-            _filtered=()
-            for _m in "${INSTALL_MODULES[@]}"; do
-                [[ "$_m" != "storagebox" ]] && _filtered+=("$_m")
-            done
-            INSTALL_MODULES=("${_filtered[@]}")
-            _has_storagebox=false
-        else
-            echo "[OK] Storage Box Zugangsdaten erfasst."
-            CUSTOM_DATA_DIR="/mnt/storagebox-data"
+    for mod in "${INSTALL_MODULES[@]}"; do
+        MOD_PATH="${PLUGINS_PATH[$mod]}"
+        if [ -f "$MOD_PATH/configure.sh" ]; then
+            MODULE_ENV_FILE="$MOD_PATH/.env.configure"
+            export MODULE_ENV_FILE
+            
+            # configure.sh kann Variablen setzen (z.B. CUSTOM_DATA_DIR, STORAGEBOX_USER)
+            # indem sie IN die Datei $MODULE_ENV_FILE geschrieben werden.
+            bash "$MOD_PATH/configure.sh"
+            
+            if [ -f "$MODULE_ENV_FILE" ]; then
+                # Ergebnisse als Shell-Variablen in setup.sh importieren
+                # Hierdurch wird z.B. CUSTOM_DATA_DIR direkt in der setup.sh Laufzeit aktualisiert
+                source "$MODULE_ENV_FILE"
+                rm -f "$MODULE_ENV_FILE"
+            fi
         fi
-    fi
-
-    # Externe Festplatte Dialog (nur wenn Nextcloud OHNE StorageBox/Custom-Dir)
-    if [ "$_has_nextcloud" = true ] && [ "$_has_storagebox" = false ] && [ -z "$CUSTOM_DATA_DIR" ]; then
-        echo ""
-        read -p "Moechtest du eine externe Festplatte fuer Nextcloud nutzen? (y/n): " _disk_choice
-        if [[ "$_disk_choice" =~ ^[yYjJ] ]]; then
-            configure_external_disk || true
-        fi
-    fi
+    done
 fi
 
 # ╔═══════════════════════════════════════════════════╗
@@ -433,19 +288,21 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
 
         ENV_FILE="$MOD_PATH/.env"
 
+        # --- Phase 4: ENV GENERATION ---
         # .env Konfiguration generieren (Atomic Write Pattern)
         if [ ! -f "$ENV_FILE" ]; then
             if [ -f "$MOD_PATH/.env.example" ]; then
                 TMP_ENV="$MOD_PATH/.env.tmp"
                 cp "$MOD_PATH/.env.example" "$TMP_ENV"
 
-                # Platzhalter ersetzen (escape_sed schuetzt Sonderzeichen)
+                # Standard Platzhalter einlesen: Domain
                 sed -i "s/DOMAIN_PLACEHOLDER/$(escape_sed "$DOMAIN")/g" "$TMP_ENV"
 
-                if [ -n "$STORAGEBOX_USER" ]; then
+                # Generische Legacy Variablen (falls noch im Environment vorhanden z.B. bei Cloud-Init)
+                if [ -n "${STORAGEBOX_USER:-}" ]; then
                     sed -i "s/STORAGEBOX_PLACEHOLDER/$(escape_sed "$STORAGEBOX_USER")/g" "$TMP_ENV"
                 fi
-                if [ -n "$STORAGEBOX_PASS" ]; then
+                if [ -n "${STORAGEBOX_PASS:-}" ]; then
                     sed -i "s/STORAGEBOXPW_PLACEHOLDER/$(escape_sed "$STORAGEBOX_PASS")/g" "$TMP_ENV"
                 fi
 
@@ -455,10 +312,13 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
                     sed -i "0,/PASSWORD_PLACEHOLDER/s/PASSWORD_PLACEHOLDER/$RANDOM_PW/" "$TMP_ENV"
                 done
 
-                # Nextcloud: Custom Data-Dir anwenden (StorageBox, ext. Festplatte, --data-dir)
-                if [ "$mod" = "nextcloud" ] && [ -n "$CUSTOM_DATA_DIR" ]; then
+                # Genereller Data-Dir Setter: Module koennen NEXTCLOUD_DATA_DIR als Variable lassen
+                if [ -n "$CUSTOM_DATA_DIR" ]; then
                     sed -i "s|^NEXTCLOUD_DATA_DIR=.*|NEXTCLOUD_DATA_DIR=$(escape_sed "$CUSTOM_DATA_DIR")|" "$TMP_ENV"
-                    echo "    -> Data-Directory: $CUSTOM_DATA_DIR"
+                    # Log nur bei NEXTCLOUD, falls er hier eingreift
+                    if [ "$mod" = "nextcloud" ]; then
+                         echo "    -> Data-Directory: $CUSTOM_DATA_DIR"
+                    fi
                 fi
 
                 # Atomares Verschieben
@@ -495,18 +355,31 @@ for mod in "${INSTALL_MODULES[@]+${INSTALL_MODULES[@]}}"; do
             fi
         fi
 
-        # Modul-Typ-Erkennung: mount.sh (Host-Level) vs docker-compose.yml (Container)
-        if [ -f "$MOD_PATH/mount.sh" ]; then
-            echo "    -> Fuehre Host-Level Setup aus..."
+        # --- Phase 5: PRE-DEPLOY ---
+        # Host-Level Setup VOR dem Container-Start
+        if [ -f "$MOD_PATH/pre-deploy.sh" ]; then
+            echo "    -> Fuehre pre-deploy.sh aus..."
+            chmod +x "$MOD_PATH/pre-deploy.sh"
+            bash "$MOD_PATH/pre-deploy.sh"
+        elif [ -f "$MOD_PATH/mount.sh" ]; then
+            echo "    -> Fuehre mount.sh aus (Legacy)..."
             chmod +x "$MOD_PATH/mount.sh"
             bash "$MOD_PATH/mount.sh"
-        elif [ -f "$MOD_PATH/docker-compose.yml" ]; then
+        fi
+
+        # --- Phase 6: DEPLOY ---
+        if [ -f "$MOD_PATH/docker-compose.yml" ]; then
             echo "    -> Starte Container..."
             cd "$MOD_PATH"
             docker compose up -d | sed 's/^/       /'
             cd - > /dev/null
-        else
-            echo "    [!] WARNUNG: Weder mount.sh noch docker-compose.yml gefunden."
+        fi
+
+        # --- Phase 7: POST-DEPLOY ---
+        if [ -f "$MOD_PATH/post-deploy.sh" ]; then
+            echo "    -> Fuehre post-deploy.sh aus..."
+            chmod +x "$MOD_PATH/post-deploy.sh"
+            bash "$MOD_PATH/post-deploy.sh"
         fi
     else
         echo "[!] WARNUNG: Das angeforderte Modul '$mod' existiert nicht. Ignoriere."

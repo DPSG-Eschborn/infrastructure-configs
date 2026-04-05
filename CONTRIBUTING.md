@@ -12,13 +12,16 @@ Großartig! So einfach geht's:
 
 1. Mach einen Fork von diesem Repository.
 2. Lege einen neuen Ordner in `/extensions` an (z.B. `/extensions/wiki`).
-3. Füge folgende drei Dateien in dieses Verzeichnis ein:
-   - `docker-compose.yml`: Die Container-Konfiguration inkl. Routing-Labels für Traefik.
-   - `.env.example`: Template für Umgebungsvariablen.
-   - `manifest.env`: Beschreibt die Metadaten des Moduls. (Wird von unserem Main-Script gescannt. Damit taucht dein Tool automatisch im Start-Menü auf!).
-4. Sende einen Pull Request!
+3. Das Herzstück ist die `manifest.env`: Beschreibt die Metadaten. Damit taucht dein Tool automatisch im Start-Menü auf!
+4. Du kannst dich in unseren **Plugin-Lifecycle** einklinken, indem du optionale Script-Dateien (Hooks) in dein Verzeichnis legst:
+   - `validate.sh` (Abhängigkeiten prüfen)
+   - `configure.sh` (User befragen)
+   - `.env.example` (Umgebungsvariablen-Template)
+   - `pre-deploy.sh` / `post-deploy.sh` (Host-Level Setup ausführen)
+   - `docker-compose.yml` (Container starten)
+5. Sende einen Pull Request!
 
-Weitere Details zur genauen Syntax der `manifest.env` findest du im Guide zu unserer Architektur unter `docs/plugin-entwicklung.md`.
+Weitere Details zur genauen Syntax der `manifest.env` und der API (Variablen wie `SYSTEM_DOMAIN`), auf die deine Scripts zugreifen können, findest du im Guide zu unserer Architektur unter [docs/plugin-entwicklung.md](docs/plugin-entwicklung.md).
 
 ### 2. Bugs und Verbesserungen
 Wenn du einen Fehler im Haupt-Skript `setup.sh` oder im `bootstrap.sh` findest, denk bei deiner Fehlerbehebung bitte an unsere P10 "Goldene Regeln":

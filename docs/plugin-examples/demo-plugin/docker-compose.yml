@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  app:
+    image: alpine:latest
+    container_name: demo_app
+    command: tail -f /dev/null
+    env_file:
+      - .env
+    # Phase 6: setup.sh fuehrt 'docker compose up -d' fuer diese Datei aus!

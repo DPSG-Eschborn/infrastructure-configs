@@ -75,16 +75,31 @@ infrastructure-configs/
         └── manifest.env
 ```
 
-### 4. Modul-Typen
+### 4. Der Plugin-Lifecycle (Hooks)
 
-Das Setup-Skript erkennt automatisch, welcher Typ ein Modul ist:
+Statt Modul-Logik fest in `setup.sh` einzuprogrammieren, läuft das Deployment in vordefinierten Phasen ab. Ein Modul kann sich über spezifische Dateinamen (Hooks) in diese Phasen einklinken. Alle Hooks sind optional.
 
-| Datei im Modul-Ordner | Typ | Aktion von `setup.sh` |
+| Phase | Hook (Dateiname) | Aktion in `setup.sh` |
 | --- | --- | --- |
-| `docker-compose.yml` | Container-Modul | `docker compose up -d` |
-| `mount.sh` | Host-Level-Modul | `bash mount.sh` |
+| 1. Discovery | `manifest.env` | Meta-Daten werden eingelesen. Modul wird im Menü angezeigt. |
+| 2. Validation | `validate.sh` | Prüft Abhängigkeiten. Exit `1` = Modul wird de-selektiert. |
+| 3. Configuration | `configure.sh` | Interaktive Abfragen. Schreibt in `MODULE_ENV_FILE`. |
+| 4. Env Generation | *(auto)* | `.env.example` wird zu `.env`, Platzhalter werden ersetzt. |
+| 5. Pre-Deploy | `pre-deploy.sh` | Host-Level Setup (z.B. Dateisystem-Mounts) *vor* dem Container. |
+| 6. Deploy | `docker-compose.yml` | Führt `docker compose up -d` aus. |
+| 7. Post-Deploy | `post-deploy.sh` | Aktionen nach Container-Start (z.B. Health-Checks). |
 
-Dadurch koennen Module auch reine System-Konfigurationen durchfuehren (z.B. Dateisysteme mounten, Cron-Jobs einrichten), ohne einen Docker-Container zu benoetigen.
+*(Rückwärtskompatibilität: `mount.sh` arbeitet identisch zu `pre-deploy.sh`)*
+
+#### API — Diese Variablen stehen deinen Skripten zur Verfügung
+
+Das Hauptskript stellt in den Ausführungsphasen bestimmte Informationen als Umgebungsvariablen bereit:
+
+- `SYSTEM_DOMAIN`: Die eingestellte Domain (z.B. `dpsg-muster.de`)
+- `ACTIVE_MODULES`: Komma-separierte Liste aller aktivierten Module
+- `ASSISTANT_MODE`: `interactive` (Mensch vorm Bildschirm) oder `headless` (Scripting)
+- `CUSTOM_DATA_DIR`: Falls ein Modul ein Custom-Data-Dir fordert.
+- `MODULE_ENV_FILE`: Eine Temporärdatei in Phase 3. Variablen, die hier hineingeschrieben werden (`echo "VAR=X" >> "$MODULE_ENV_FILE"`), importiert `setup.sh` danach automatisch in sein Environment.
 
 ---
 
