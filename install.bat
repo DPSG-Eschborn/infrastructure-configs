@@ -8,12 +8,12 @@ echo.
 echo   Lade aktuelle Version herunter...
 echo.
 
-:: Lade deploy.ps1 direkt von GitHub in den TEMP-Ordner
+:: Lade install.ps1 direkt von GitHub in den TEMP-Ordner
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
     "try { " ^
     "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; " ^
-    "  $url = 'https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.ps1'; " ^
-    "  $dest = Join-Path $env:TEMP 'pfadfinder-deploy.ps1'; " ^
+    "  $url = 'https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/install.ps1'; " ^
+    "  $dest = Join-Path $env:TEMP 'pfadfinder-install.ps1'; " ^
     "  Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing; " ^
     "  Write-Host '  [OK] Download erfolgreich.' -ForegroundColor Green; " ^
     "  Write-Host ''; " ^

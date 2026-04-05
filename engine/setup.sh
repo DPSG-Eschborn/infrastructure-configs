@@ -5,9 +5,15 @@ set -euo pipefail
 # Sicherstellen, dass das Skript root-Rechte hat (EUID 0)
 if [[ $EUID -ne 0 ]]; then
    echo "[!] Docker und Systemkonfigurationen erfordern Root-Rechte."
-   echo "Bitte starte das Skript mit: sudo ./setup.sh"
+   echo "Bitte starte das Skript mit: sudo ./engine/setup.sh"
    exit 1
 fi
+
+# Sicherheitsbereinigung bei abbruch (Strg+C) oder Erfolg
+trap 'sed -i "/ephemeral_pfadi_key/d" /root/.ssh/authorized_keys /home/pfadiadmin/.ssh/authorized_keys 2>/dev/null || true' EXIT
+
+# Wechsle ins Root-Verzeichnis des Repositories
+cd "$(dirname "$0")/.." || exit 1
 
 MODE="interactive"
 INSTALL_MODULES=()
@@ -419,4 +425,7 @@ else
     echo "  Nextcloud: https://cloud.$DOMAIN"
     echo "  Website:   https://www.$DOMAIN"
 fi
+echo ""
+echo "Alle Module wurden installiert."
+echo "Die SSH-Setup-Verbindung wird nun automatisch getrennt."
 echo "========================================="

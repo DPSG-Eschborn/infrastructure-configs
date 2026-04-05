@@ -65,12 +65,12 @@ Der Assistent existiert in zwei gleichwertigen Implementierungen — eine für W
 
 | Betriebssystem | Was der User tut | Was technisch passiert |
 | --- | --- | --- |
-| **Windows** | `deploy.bat` herunterladen + Doppelklick | `deploy.bat` lädt `deploy.ps1` von GitHub herunter und führt es aus |
-| **Windows** | PowerShell-Befehl (siehe README) | `deploy.ps1` wird direkt in den TEMP-Ordner geladen und gestartet |
-| **Linux / macOS** | Terminal-Befehl (siehe README) | `deploy.sh` wird nach `/tmp/` geladen und mit `bash` ausgeführt |
-| **Direkt am Server** | `sudo ./setup.sh` im Terminal | Kein Wizard — setup.sh startet direkt im interaktiven Modus |
+| **Windows** | `install.bat` herunterladen + Doppelklick | `install.bat` lädt `install.ps1` von GitHub herunter und führt es aus |
+| **Windows** | PowerShell-Befehl (siehe README) | `install.ps1` wird direkt in den TEMP-Ordner geladen und gestartet |
+| **Linux / macOS** | Terminal-Befehl (siehe README) | `install.sh` wird nach `/tmp/` geladen und mit `bash` ausgeführt |
+| **Direkt am Server** | `sudo ./engine/setup.sh` im Terminal | Kein Wizard — setup.sh startet direkt im interaktiven Modus |
 
-> **Architektur-Prinzip:** Kein Einstiegspunkt enthält Logik — `deploy.bat` lädt den echten Code bei jeder Ausführung frisch von GitHub. So ist der Assistent immer auf dem neuesten Stand, ohne dass der User etwas aktualisieren muss. Die konkreten Befehle stehen in der [README](../README.md).
+> **Architektur-Prinzip:** Kein Einstiegspunkt enthält Logik — `install.bat` lädt den echten Code bei jeder Ausführung frisch von GitHub. So ist der Assistent immer auf dem neuesten Stand, ohne dass der User etwas aktualisieren muss. Die konkreten Befehle stehen in der [README](../README.md).
 
 ---
 
@@ -302,6 +302,8 @@ Jeder Server wird automatisch gehärtet — sowohl über Cloud-Init (Hetzner) al
 | **UFW Firewall** | deny-all + Whitelist 22/80/443 | Port-Scanning, unerwünschter Zugriff |
 | **unattended-upgrades** | Automatische Sicherheitspatches | Bekannte Schwachstellen |
 | **SSH-Härtung** | Root-Login verboten, Max. 3 Versuche | SSH-Brute-Force |
+| **"Self-Destruct"-Setup-Keys** | Temporärer Einweg-Schlüssel löscht sich bei Abschluss oder SSH/Strg+C Abbruch sofort selbst (Bash EXIT-Trap). | Liegenbleibende private Schlüssel auf Admin-Laptops |
+| **Langzeit-Administration** | Späterer Zugriff per importierten eigenen echten GitHub-Keys oder Hetzner-Web-Konsole (VNC). | Kompromissierte Temp-Keys |
 | **Security-Headers** | HSTS, X-Frame-Options, CSP via Traefik | XSS, Clickjacking |
 | **Passwort-Handling** | Env-Vars statt CLI-Args, `openssl rand` | Klartext-Leaks in Logs/Prozessliste |
 | **Atomic Writes** | .env wird in .env.tmp geschrieben, dann `mv` | Halb-generierte Konfigurationen |
@@ -313,12 +315,13 @@ Jeder Server wird automatisch gehärtet — sowohl über Cloud-Init (Hetzner) al
 ```text
 infrastructure-configs/
 │
-├── deploy.bat                 ← Windows: Doppelklick-Einstieg (standalone, laedt deploy.ps1 von GitHub)
-├── deploy.ps1                 ← Windows-Wizard (Provider-Auswahl + Konfig)
-├── deploy.sh                  ← Linux/macOS-Wizard (identische Funktionalitaet)
+├── install.bat                 ← Windows: Doppelklick-Einstieg (standalone, laedt install.ps1 von GitHub)
+├── install.ps1                 ← Windows-Wizard (Infrastruktur-Erstellung + SSH Tunnel)
+├── install.sh                  ← Linux/macOS-Wizard (Infrastruktur-Erstellung + SSH Tunnel)
 │
-├── bootstrap.sh               ← Auf dem SERVER: klont Repo + startet setup.sh
-├── setup.sh                   ← Auf dem SERVER: Deployment-Engine + OS-Haertung
+├── engine/
+│   ├── bootstrap.sh            ← Auf dem SERVER: klont Repo + startet setup.sh
+│   └── setup.sh                ← Auf dem SERVER: Deployment-Engine + OS-Haertung
 │
 ├── cloud-configs/
 │   └── hetzner-basic-node.yaml    ← Cloud-Init Template (manuelle Alternative)

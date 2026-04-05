@@ -7,6 +7,7 @@ Wir freuen uns sehr, falls du mithelfen möchtest, das Setup für unsere Serverl
 ## So kannst du beitragen
 
 ### 1. Ein neues Plugin/Modul hinzufügen
+
 Du möchtest z.B. ein Wiki (Wiki.js) oder eine custom Pfadfinder Buchführungs-WebApp ergänzen?
 Großartig! So einfach geht's:
 
@@ -24,11 +25,14 @@ Großartig! So einfach geht's:
 Weitere Details zur genauen Syntax der `manifest.env` und der API (Variablen wie `SYSTEM_DOMAIN`), auf die deine Scripts zugreifen können, findest du im Guide zu unserer Architektur unter [docs/plugin-entwicklung.md](docs/plugin-entwicklung.md).
 
 ### 2. Bugs und Verbesserungen
+
 Wenn du einen Fehler im Haupt-Skript `setup.sh` oder im `bootstrap.sh` findest, denk bei deiner Fehlerbehebung bitte an unsere P10 "Goldene Regeln":
+
 - **Idempotenz:** Man muss dein Skript unendlich oft hintereinander ausführen können, ohne das die Konfiguration zerfällt.
 - **Fail-Fast:** Nutze `set -euo pipefail` in Bash-Skripten, um unvorhersehbares Fehlverhalten frühzeitig zu stoppen.
 - **Atomic Writes:** Modifikationen an Konfigurationsdateien sollen wenn möglich über temporäre Dateien ablaufen, die abschließend via `mv` ersetzt werden.
 - **Kommentare:** Schreibe minimalen, aber klaren Code. "Was" passiert, steht im Code. "Warum" es hier steht, schreibst du in den Kommentar.
 
-### Los geht's!
+### Los geht's
+
 Hab keine Angst vor Fehlern. Wir lernen hier alle gemeinsam! Bei Fragen mach einfach ein GitHub Issue auf.

@@ -2,27 +2,32 @@
 
 Diese Dokumentation beschreibt, wie die Skripte und Container-Konfigurationen logisch strukturiert sind und wie das Setup abgewickelt wird.
 
-Die Architektur basiert auf **Docker Compose** zur Container-Steuerung und einem **Bash-Skript** (`setup.sh`) zur logischen Steuerung des Ablaufs. 
+Die Architektur basiert auf **Docker Compose** zur Container-Steuerung und einem **Bash-Skript** (`setup.sh`) zur logischen Steuerung des Ablaufs.
 
 *Hintergrund:* Obwohl Tools wie Ansible weithin verbreitet sind, erfordern sie eine harte Einarbeitungszeit. Die Kombination aus Bash und Docker Compose ist für viele erfahrungsgemäß einfacher nachzuvollziehen. Das senkt die Hürde für administrative Eingriffe in unseren Pfadfinder-Lokalgruppen, falls abends mal ein Server streikt.
 
 ## Aufbau des Systems
 
 ### 1. Das Bootstrap-System
+
 Dieses Rahmenwerk platziert das Repository initial auf dem Server:
+
 - **Hetzner (Cloud):** Automatisiert über User-Data (Cloud-Init).
 - **Self-Hosted:** Manuell initiiert über das `bootstrap.sh` Ausführungsskript.
 *Ergebnis: Das Repository-System liegt unter `/opt/pfadfinder-cloud` vor.*
 
 ### 2. Das Hauptskript (`setup.sh`)
+
 Dies ist der Installer, der auf jedem System ausgeführt wird. Die Hauptaufgaben:
+
 1. Docker-Engine installieren, falls diese nicht auf dem System vorhanden ist.
 2. Dynamisches Scanning der Modulverzeichnisse (Plugin Auto-Erkennung).
 3. Interaktive Abfrage beim Benutzer (z.B. Domainname, Auswahl der spezifischen Dienste).
 4. Sichere Erstellung von Umgebungsvariablen (`.env` Dateien generiert aus `.env.example`).
 5. Sequenzielles Starten der ausgewaehlten Module (Docker-Container oder Host-Level-Skripte).
 
-### 3. Das Modul-System 
+### 3. Das Modul-System
+
 Um das Installations-Skript (`setup.sh`) bei neuen Projekten nicht modifizieren zu müssen, baut das System auf einer autarken Plugin-Struktur auf. Modul-Ordner (wie `/extensions/nextcloud`) beinhalten grundsätzlich drei Dateien:
 
 1. `manifest.env`: Enthält Metadaten fuer das Setup-Skript.

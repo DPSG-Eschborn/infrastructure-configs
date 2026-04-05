@@ -3,12 +3,15 @@
 Bei einem gemieteten Server (z.B. Hetzner Cloud, AWS oder DigitalOcean) kann der **Cloud-Init** Mechanismus zur automatisierten Erstkonfiguration genutzt werden.
 
 ## Was ist Cloud-Init?
+
 Cloud-Init ist ein Industriestandard zur Initialisierung von Cloud-Instanzen. Bei der Erstellung eines virtuellen Servers kann ein Konfigurationsskript ("Cloud Config" oder "User-Data") übergeben werden. Dieses wird beim ersten Start ausgeführt.
 
 ## Installationsprozess
+
 Ein manueller SSH-Login ist für das initiale Setup nicht erforderlich. Der Cloud-Provider übergibt die `cloud-init.yaml` während des ersten Boot-Vorgangs an das Betriebssystem. Das Skript wird mit Root-Rechten ausgeführt, bevor das Netzwerk für reguläre Logins freigegeben wird.
 
 ### Ablauf (Am Beispiel des Nextcloud-Moduls)
+
 1. Die Vorlage `cloud-configs/hetzner-basic-node.yaml` aus diesem Repository kopieren.
 2. Die Vorlage bei der Servererstellung im Cloud-Panel im Feld "User Data" einfügen.
 3. **Wichtig:** Scrolle im Code etwas runter und passe zwei kleine Dinge an deine Gruppe an:

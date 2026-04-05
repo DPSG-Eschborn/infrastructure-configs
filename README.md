@@ -10,13 +10,13 @@ Gut Pfad! 👋 Du willst einen neuen Server für uns aufsetzen und hast nicht vi
 
 **Option A** — Datei herunterladen:
 
-1. Lade [`deploy.bat`](https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.bat) herunter (Rechtsklick → *Ziel speichern unter...*)
-2. Doppelklicke auf die Datei — der Assistent startet automatisch!
+1. Lade [`install.bat`](https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/install.bat) herunter (Rechtsklick → *Ziel speichern unter...*)
+2. Doppelklicke auf die Datei `install.bat` — der Assistent startet automatisch!
 
 **Option B** — PowerShell-Befehl (Rechtsklick auf Start → *Terminal*):
 
 ```powershell
-irm https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.ps1 -OutFile $env:TEMP\deploy.ps1; & $env:TEMP\deploy.ps1
+irm https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/install.ps1 -OutFile $env:TEMP\install.ps1; & $env:TEMP\install.ps1
 ```
 
 ### Linux / macOS
@@ -24,7 +24,7 @@ irm https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/
 Öffne ein Terminal und führe diesen einen Befehl aus:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/deploy.sh -o /tmp/deploy.sh && bash /tmp/deploy.sh
+curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/install.sh -o /tmp/install.sh && bash /tmp/install.sh
 ```
 
 ### Was kann der Assistent?
@@ -50,7 +50,7 @@ sudo su -
 **Schritt 2:** Lade unsere automatische Server-Einrichtung herunter und starte sie:
 
 ```bash
-curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/bootstrap.sh -o /tmp/bootstrap.sh && bash /tmp/bootstrap.sh
+curl -sL https://raw.githubusercontent.com/DPSG-Eschborn/infrastructure-configs/main/engine/bootstrap.sh -o /tmp/bootstrap.sh && bash /tmp/bootstrap.sh
 ```
 
 **Schritt 3:** Das war's schon! Es öffnet sich nun ein Menü. Es fragt dich auf Deutsch, wie eure Gruppen-Domain heißt und welche Module du installieren willst (tippe `y` um zuzustimmen). Den schweren Rest, inklusive SSL-Zertifikaten (grünes Schloss) und sicheren Datenbank-Passwörtern bauen wir völlig unsichtbar im Hintergrund zusammen.
