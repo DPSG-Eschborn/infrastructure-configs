@@ -24,6 +24,11 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       # ===== Globale Security-Headers Middleware (KDG/DSGVO-konform) =====
       # Referenz: https://securityheaders.com / OWASP Secure Headers Project
