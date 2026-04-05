@@ -103,7 +103,7 @@ Das Hauptskript stellt in den Ausführungsphasen bestimmte Informationen als Umg
 
 ---
 
-## Qualitätsstandards (P10)
+## Qualitätsstandards
 
 Für alle Bash-Routinen in diesem Repository gelten strikte Struktur-Vorgaben:
 

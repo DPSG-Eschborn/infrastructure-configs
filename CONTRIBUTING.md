@@ -7,7 +7,7 @@ Wir freuen uns sehr, falls du mithelfen möchtest, das Setup für unsere Serverl
 ## So kannst du beitragen
 
 ### 1. Ein neues Plugin/Modul hinzufügen
-Du möchtest z.B. ein Wiki (Wiki.js) oder unsere Pfadfinder Kassen-Software ergänzen?
+Du möchtest z.B. ein Wiki (Wiki.js) oder eine custom Pfadfinder Buchführungs-WebApp ergänzen?
 Großartig! So einfach geht's:
 
 1. Mach einen Fork von diesem Repository.

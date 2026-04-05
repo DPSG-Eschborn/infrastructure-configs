@@ -14,9 +14,9 @@ INSTALL_MODULES=()
 DOMAIN=""
 # Credentials koennen als Environment-Variablen uebergeben werden
 # (bevorzugt gegenueber CLI-Argumenten, da nicht in Prozessliste sichtbar)
-STORAGEBOX_USER="${STORAGEBOX_USER:-}"
-STORAGEBOX_PASS="${STORAGEBOX_PASS:-}"
-CUSTOM_DATA_DIR="${CUSTOM_DATA_DIR:-}"
+export STORAGEBOX_USER="${STORAGEBOX_USER:-}"
+export STORAGEBOX_PASS="${STORAGEBOX_PASS:-}"
+export CUSTOM_DATA_DIR="${CUSTOM_DATA_DIR:-}"
 
 # ╔═══════════════════════════════════════════════════╗
 # ║              HILFSFUNKTIONEN                      ║
@@ -168,13 +168,14 @@ if [ "$MODE" = "interactive" ]; then
           * ) echo "    Ueberspringe $mod.";;
         esac
     done
+fi
 
-    # Setup-API fuer validate.sh exportieren
+# Setup-API fuer validate.sh exportieren
     ACTIVE_MODULES="${INSTALL_MODULES[*]}"
     export ACTIVE_MODULES
 
     # --- Phase 2: VALIDATE ---
-    # Entfernt Module, die ihre Abhaengigkeiten nicht erfuellen (z.B. StorageBox ohne Nextcloud)
+    # Entfernt Module, die ihre Abhaengigkeiten nicht erfuellen (z.B. StorageBox ohne Nextcloud) oder nicht existieren
     VALIDATED_MODULES=()
     for mod in "${INSTALL_MODULES[@]}"; do
         if [[ -n "${PLUGINS_PATH[$mod]:-}" ]]; then
@@ -184,8 +185,11 @@ if [ "$MODE" = "interactive" ]; then
                     continue # Modul wird uebersprungen/entfernt
                 fi
             fi
+            # Nur hinzufügen, wenn es existiert und die validierung bestanden hat
+            VALIDATED_MODULES+=("$mod")
+        else
+            echo "[!] WARNUNG: Das angeforderte Modul '$mod' existiert nicht. Wird ignoriert."
         fi
-        VALIDATED_MODULES+=("$mod")
     done
     INSTALL_MODULES=("${VALIDATED_MODULES[@]}")
     
@@ -200,6 +204,7 @@ if [ "$MODE" = "interactive" ]; then
     export CUSTOM_DATA_DIR="${CUSTOM_DATA_DIR:-}"
     export SYSTEM_DOMAIN="$DOMAIN"
 
+    CONFIGURED_MODULES=()
     for mod in "${INSTALL_MODULES[@]}"; do
         MOD_PATH="${PLUGINS_PATH[$mod]}"
         if [ -f "$MOD_PATH/configure.sh" ]; then
@@ -208,7 +213,10 @@ if [ "$MODE" = "interactive" ]; then
             
             # configure.sh kann Variablen setzen (z.B. CUSTOM_DATA_DIR, STORAGEBOX_USER)
             # indem sie IN die Datei $MODULE_ENV_FILE geschrieben werden.
-            bash "$MOD_PATH/configure.sh"
+            if ! bash "$MOD_PATH/configure.sh"; then
+                echo "    -> [!] Konfiguration für '$mod' abgebrochen. Wird uebersprungen."
+                continue
+            fi
             
             if [ -f "$MODULE_ENV_FILE" ]; then
                 # Ergebnisse als Shell-Variablen in setup.sh importieren
@@ -217,16 +225,20 @@ if [ "$MODE" = "interactive" ]; then
                 rm -f "$MODULE_ENV_FILE"
             fi
         fi
+        CONFIGURED_MODULES+=("$mod")
     done
-fi
-
+    INSTALL_MODULES=("${CONFIGURED_MODULES[@]}")
+    
+    # ACTIVE_MODULES updaten, falls Module im Configure abgebrochen haben
+    ACTIVE_MODULES="${INSTALL_MODULES[*]}"
+    export ACTIVE_MODULES
 # ╔═══════════════════════════════════════════════════╗
 # ║       4. DOMAIN-KONFIGURATION                     ║
 # ╚═══════════════════════════════════════════════════╝
 
 if [ -z "$DOMAIN" ] || [ "$DOMAIN" = "AUTO" ]; then
     echo "[-] Kein Domainname uebergeben. Erstelle automatische .nip.io Test-Domain..."
-    PUBLIC_IP=$(curl -4 -s -m 10 icanhazip.com)
+    PUBLIC_IP=$(curl -4 -s -m 10 icanhazip.com || true)
     if [ -n "$PUBLIC_IP" ]; then
         DOMAIN="${PUBLIC_IP}.nip.io"
         echo "    -> Dynamische Domain generiert: $DOMAIN"
@@ -249,10 +261,6 @@ if [[ "$DOMAIN" == *.nip.io ]]; then
     echo "============================================"
 fi
 
-# Headless: StorageBox Data-Dir setzen (wenn Credentials vorhanden aber CUSTOM_DATA_DIR leer)
-if [ -n "$STORAGEBOX_USER" ] && [ -n "$STORAGEBOX_PASS" ] && [ -z "$CUSTOM_DATA_DIR" ]; then
-    CUSTOM_DATA_DIR="/mnt/storagebox-data"
-fi
 
 # ╔═══════════════════════════════════════════════════╗
 # ║       5. DOCKER NETZWERK                          ║
